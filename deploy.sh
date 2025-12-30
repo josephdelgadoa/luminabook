@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e
 
 # Define variables
 APP_NAME="luminabook-app"

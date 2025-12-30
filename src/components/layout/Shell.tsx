@@ -57,7 +57,6 @@ export const Shell: React.FC<ShellProps> = ({ currentStep, children }) => {
                         {steps.map((step, index) => {
                             const isActive = step.id === currentStep;
                             const isPast = steps.findIndex(s => s.id === currentStep) > index;
-                            const isFuture = !isActive && !isPast;
 
                             return (
                                 <div key={step.id} className="flex flex-col items-center gap-3 bg-slate-50 px-4 z-10">
