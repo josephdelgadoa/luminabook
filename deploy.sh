@@ -3,7 +3,7 @@
 # Define variables
 APP_NAME="luminabook-app"
 IMAGE_NAME="luminabook"
-PORT="80" # Change this if you want to run on a different port, e.g., 3000
+PORT="8004" # Change this if you want to run on a different port, e.g., 3000
 
 echo "Starting deployment for $APP_NAME..."
 
