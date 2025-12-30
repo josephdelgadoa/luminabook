@@ -18,13 +18,9 @@ git pull origin main
 echo "Building Docker image..."
 docker build -t $IMAGE_NAME .
 
-# Check if a container is already running and remove it
-if [ "$(docker ps -q -f name=$APP_NAME)" ]; then
-    echo "Stopping existing container..."
-    docker stop $APP_NAME
-    echo "Removing existing container..."
-    docker rm $APP_NAME
-fi
+# Remove any existing container (running or stopped)
+echo "Removing existing container if it exists..."
+docker rm -f $APP_NAME || true
 
 # Run the new container
 echo "Running new container on port $PORT..."
