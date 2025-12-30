@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { EBook, BookTheme, Chapter } from '@/types';
+import type { EBook, BookTheme } from '@/types';
 import { generateImage } from '@/services/ai-service';
 import { Type, Image as ImageIcon, Sparkles, RefreshCw, Smartphone, Monitor, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react';
 
