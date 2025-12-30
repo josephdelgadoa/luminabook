@@ -12,19 +12,46 @@ interface ManuscriptArchitectProps {
 export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, setBook, onNext }) => {
     const [text, setText] = useState('');
     const [isAnalyzing, setIsAnalyzing] = useState(false);
+    const [language, setLanguage] = useState<'en' | 'es'>('en');
 
     const handleAnalyze = async () => {
         if (!text.trim()) return;
 
         setIsAnalyzing(true);
         try {
-            const result = await analyzeManuscript(text);
+            const result = await analyzeManuscript(text, language);
             setBook({ ...book, ...result });
         } catch (error) {
             console.error("Analysis failed", error);
         } finally {
             setIsAnalyzing(false);
         }
+    };
+
+    const getChapterLabel = (index: number, title: string) => {
+        const lowerTitle = title.toLowerCase();
+        const isIntro = lowerTitle.includes('intro') || lowerTitle.includes('prologue') || lowerTitle.includes('prólogo') || lowerTitle.includes('preface') || lowerTitle.includes('prefacio');
+
+        if (isIntro) return null; // No label for intros
+
+        // Calculate actual chapter number (adjusting for previous intros)
+        // Simple heuristic: just count it as chapter index for now, but in a real app might need dynamic reducing
+        // For this UI, we will just use the index+1 but conditionally hide the label if intro
+
+        const labelStr = language === 'es' ? 'Capítulo' : 'Chapter';
+        return `${labelStr} ${index + 1}`;
+    };
+
+    // Helper to calculate visual index (skipping intros)
+    const getVisualIndex = (allChapters: typeof book.chapters, currentIndex: number) => {
+        if (!allChapters) return currentIndex + 1;
+        let count = 0;
+        for (let i = 0; i <= currentIndex; i++) {
+            const lowerTitle = allChapters[i].title.toLowerCase();
+            const isIntro = lowerTitle.includes('intro') || lowerTitle.includes('prologue') || lowerTitle.includes('prólogo');
+            if (!isIntro) count++;
+        }
+        return count;
     };
 
     return (
@@ -36,14 +63,29 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
                         <FileText className="w-6 h-6 text-indigo-600" />
                         Raw Manuscript
                     </h2>
-                    <div className="text-xs text-slate-500 uppercase tracking-wider font-medium">Input Stage</div>
+                    <div className="flex items-center gap-2">
+                        <div className="bg-slate-100 p-1 rounded-lg flex text-xs font-medium">
+                            <button
+                                onClick={() => setLanguage('en')}
+                                className={`px-3 py-1 rounded-md transition-all ${language === 'en' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                English
+                            </button>
+                            <button
+                                onClick={() => setLanguage('es')}
+                                className={`px-3 py-1 rounded-md transition-all ${language === 'es' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                            >
+                                Español
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="relative group">
                     <textarea
                         value={text}
                         onChange={(e) => setText(e.target.value)}
-                        placeholder="Paste your raw text here or upload a file..."
+                        placeholder={language === 'es' ? "Pegue su manuscrito aquí..." : "Paste your raw text here or upload a file..."}
                         className="w-full bg-white border border-slate-200 rounded-xl p-6 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none font-mono text-sm leading-relaxed min-h-[400px] shadow-sm"
                     />
                     <div className="absolute bottom-4 right-4 flex gap-2">
@@ -74,12 +116,12 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
                 >
                     {isAnalyzing ? (
                         <span className="flex items-center gap-2 animate-pulse text-white">
-                            <Sparkles className="w-5 h-5" /> Analyzing Structure...
+                            <Sparkles className="w-5 h-5" /> {language === 'es' ? 'Analizando Estructura...' : 'Analyzing Structure...'}
                         </span>
                     ) : (
                         <span className="text-white flex items-center gap-2">
                             <Sparkles className="w-5 h-5 group-hover:text-yellow-300 transition-colors" />
-                            Analyze & Structure Book
+                            {language === 'es' ? 'Analizar y Estructurar Libro' : 'Analyze & Structure Book'}
                         </span>
                     )}
                 </button>
@@ -95,15 +137,24 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
                         </div>
 
                         <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-                            {book.chapters.map((chapter, idx) => (
-                                <div key={chapter.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-indigo-500/30 transition-colors cursor-default group">
-                                    <div className="flex items-center justify-between mb-2">
-                                        <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">Chapter {idx + 1}</span>
+                            {book.chapters.map((chapter, idx) => {
+                                const lowerTitle = chapter.title.toLowerCase();
+                                const isIntro = lowerTitle.includes('intro') || lowerTitle.includes('prologue') || lowerTitle.includes('prólogo');
+                                const visualNum = getVisualIndex(book.chapters, idx);
+                                const label = isIntro ? null : `${language === 'es' ? 'Capítulo' : 'Chapter'} ${visualNum}`;
+
+                                return (
+                                    <div key={chapter.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-indigo-500/30 transition-colors cursor-default group">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                                                {label}
+                                            </span>
+                                        </div>
+                                        <h4 className="text-lg font-medium text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{chapter.title}</h4>
+                                        <p className="text-slate-600 text-sm">{chapter.summary}</p>
                                     </div>
-                                    <h4 className="text-lg font-medium text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{chapter.title}</h4>
-                                    <p className="text-slate-600 text-sm">{chapter.summary}</p>
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-slate-100">

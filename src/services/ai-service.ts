@@ -6,25 +6,33 @@ const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 console.log("AI Service Initialized. Key present:", !!apiKey, "Length:", apiKey.length);
 
-export const analyzeManuscript = async (text: string): Promise<Partial<EBook>> => {
+export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'en'): Promise<Partial<EBook>> => {
     console.log("Analyzing manuscript via Gemini-1.5-flash...");
 
     try {
         // Verified available model: gemini-2.5-flash
         const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
+        const languageInstruction = language === 'es'
+            ? "OUTPUT LANGUAGE: SPANISH (Español). ensure all titles, summaries, and descriptions are in Spanish."
+            : "OUTPUT LANGUAGE: ENGLISH.";
+
         const prompt = `
         You are an Elite Book Designer. Your task is to structure a book based on the user's input.
         
+        ${languageInstruction}
+
         INPUT ANALYSIS:
         1. Check if the input is a full manuscript or a concept/outline.
         
         EXECUTION RULES:
         - If Manuscript: You act as a FORMATTER. You must split the content into logical chapters. 
           CRITICAL: You MUST PRESERVE the ORIGINAL TEXT of the input in the 'content' field. 
-          Do NOT rewrite, summarize, or translate the content. Keep it exactly as is, just organized. 
-          Maintain the original language.
+          Do NOT rewrite, summarize, or translate the content body unless it is a summary. Keep it exactly as is, just organized. 
         - If Concept/Topic: Creatively generate a comprehensive 10-12 chapter outline expanding on the theme.
+        - STRUCTURE: 
+           - Look for "Introduction", "Prologue", "Introducción", "Prólogo". treat them as distinct sections, NOT "Chapter 1".
+           - The first "Chapter 1" should be the actual start of the story/content after any intro.
 
         OUTPUT FORMAT:
         Return a valid JSON object with: 
