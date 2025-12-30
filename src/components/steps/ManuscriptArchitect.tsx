@@ -43,17 +43,7 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
         return `${labelStr} ${index + 1}`;
     };
 
-    // Helper to calculate visual index (skipping intros)
-    const getVisualIndex = (allChapters: typeof book.chapters, currentIndex: number) => {
-        if (!allChapters) return currentIndex + 1;
-        let count = 0;
-        for (let i = 0; i <= currentIndex; i++) {
-            const lowerTitle = allChapters[i].title.toLowerCase();
-            const isIntro = lowerTitle.includes('intro') || lowerTitle.includes('prologue') || lowerTitle.includes('prólogo');
-            if (!isIntro) count++;
-        }
-        return count;
-    };
+
 
     return (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
