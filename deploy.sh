@@ -5,7 +5,15 @@ set -e
 APP_NAME="luminabook-app"
 IMAGE_NAME="luminabook"
 PORT="8004"
-API_KEY="AIzaSyCOmB7VhqMqfZHgi9-77LmWN9czHsFptXs" # Adding API key explicitly for prod
+if [ -f .env ]; then
+  export $(cat .env | xargs)
+fi
+
+API_KEY="$VITE_GEMINI_API_KEY"
+if [ -z "$API_KEY" ]; then
+  echo "Error: VITE_GEMINI_API_KEY not found in .env"
+  exit 1
+fi
 
 echo "Starting deployment for $APP_NAME..."
 
