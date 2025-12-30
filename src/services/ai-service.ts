@@ -58,8 +58,9 @@ export const analyzeManuscript = async (text: string): Promise<Partial<EBook>> =
         }
 
         // Ensure IDs
+        const generateId = () => Math.random().toString(36).substring(2, 9);
         if (json.chapters) {
-            json.chapters = json.chapters.map((c: any) => ({ ...c, id: c.id || crypto.randomUUID() }));
+            json.chapters = json.chapters.map((c: any) => ({ ...c, id: c.id || generateId() }));
         }
 
         return json;
@@ -75,7 +76,7 @@ export const analyzeManuscript = async (text: string): Promise<Partial<EBook>> =
             author: "System Error",
             chapters: [
                 {
-                    id: crypto.randomUUID(),
+                    id: Math.random().toString(36).substring(2, 9),
                     title: "Full Manuscript Content",
                     content: text,
                     summary: `System encountered an error: ${errorMessage}`,

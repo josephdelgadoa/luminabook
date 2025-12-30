@@ -3,7 +3,8 @@
 # Define variables
 APP_NAME="luminabook-app"
 IMAGE_NAME="luminabook"
-PORT="8004" # Change this if you want to run on a different port, e.g., 3000
+PORT="8004"
+API_KEY="AIzaSyCOmB7VhqMqfZHgi9-77LmWN9czHsFptXs" # Adding API key explicitly for prod
 
 echo "Starting deployment for $APP_NAME..."
 
@@ -16,7 +17,7 @@ git pull origin main
 
 # Build the Docker image
 echo "Building Docker image..."
-docker build -t $IMAGE_NAME .
+docker build --build-arg VITE_GEMINI_API_KEY="$API_KEY" -t $IMAGE_NAME .
 
 # Remove any existing container (running or stopped)
 echo "Removing existing container if it exists..."
@@ -28,6 +29,7 @@ docker run -d \
   --name $APP_NAME \
   --restart always \
   -p $PORT:80 \
+  -e VITE_GEMINI_API_KEY="$API_KEY" \
   $IMAGE_NAME
 
 echo "Deployment complete!"
