@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import type { EBook } from '@/types';
+import { motion } from 'framer-motion';
 import { analyzeManuscript } from '@/services/ai-service';
 import { Sparkles, ArrowRight, FileText } from 'lucide-react';
 
@@ -137,24 +138,28 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
                         </div>
 
                         <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-                            {book.chapters.map((chapter, idx) => {
-                                const lowerTitle = chapter.title.toLowerCase();
-                                const isIntro = lowerTitle.includes('intro') || lowerTitle.includes('prologue') || lowerTitle.includes('prólogo');
-                                const visualNum = getVisualIndex(book.chapters, idx);
-                                const label = isIntro ? null : `${language === 'es' ? 'Capítulo' : 'Chapter'} ${visualNum}`;
-
-                                return (
-                                    <div key={chapter.id} className="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-indigo-500/30 transition-colors cursor-default group">
-                                        <div className="flex items-center justify-between mb-2">
-                                            <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                                                {label}
-                                            </span>
-                                        </div>
-                                        <h4 className="text-lg font-medium text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{chapter.title}</h4>
-                                        <p className="text-slate-600 text-sm">{chapter.summary}</p>
-                                    </div>
-                                );
-                            })}
+                            <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                                {book.chapters.map((chapter, idx) => {
+                                    const label = getChapterLabel(idx, chapter.title);
+                                    return (
+                                        <motion.div
+                                            initial={{ opacity: 0, x: 20 }}
+                                            animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: idx * 0.1 }}
+                                            key={chapter.id}
+                                            className="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-indigo-500/30 transition-colors cursor-default group"
+                                        >
+                                            <div className="flex items-center justify-between mb-2">
+                                                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
+                                                    {label}
+                                                </span>
+                                            </div>
+                                            <h4 className="text-lg font-medium text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{chapter.title}</h4>
+                                            <p className="text-slate-600 text-sm opacity-80">{chapter.summary}</p>
+                                        </motion.div>
+                                    );
+                                })}
+                            </div>
                         </div>
 
                         <div className="mt-6 pt-6 border-t border-slate-100">

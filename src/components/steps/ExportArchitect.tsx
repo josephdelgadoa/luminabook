@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { EBook, ExportConfig } from '@/types';
 import { generatePDF } from '@/services/pdf-service';
+import { motion } from 'framer-motion';
 import { FileText, Smartphone, Printer, Check, Settings, Download } from 'lucide-react';
 
 interface ExportArchitectProps {
@@ -37,27 +38,33 @@ export const ExportArchitect: React.FC<ExportArchitectProps> = ({ book }) => {
                     <div className="mb-8">
                         <label className="text-xs text-slate-500 uppercase tracking-wider font-medium mb-3 block">Distribution Format</label>
                         <div className="grid grid-cols-3 gap-3">
-                            <button
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setConfig({ ...config, format: 'pdf' })}
                                 className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${config.format === 'pdf' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'}`}
                             >
                                 <Printer className="w-6 h-6" />
                                 <span className="text-xs font-bold">Print PDF</span>
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setConfig({ ...config, format: 'epub' })}
                                 className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${config.format === 'epub' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'}`}
                             >
                                 <Smartphone className="w-6 h-6" />
                                 <span className="text-xs font-bold">EPUB 3.0</span>
-                            </button>
-                            <button
+                            </motion.button>
+                            <motion.button
+                                whileHover={{ scale: 1.05 }}
+                                whileTap={{ scale: 0.95 }}
                                 onClick={() => setConfig({ ...config, format: 'kpf' })}
                                 className={`p-4 rounded-xl border flex flex-col items-center gap-2 transition-all ${config.format === 'kpf' ? 'bg-indigo-600 border-indigo-500 text-white shadow-lg shadow-indigo-500/30' : 'bg-slate-900 border-slate-700 text-slate-400 hover:border-slate-600'}`}
                             >
                                 <FileText className="w-6 h-6" />
                                 <span className="text-xs font-bold">Kindle KPF</span>
-                            </button>
+                            </motion.button>
                         </div>
                     </div>
 

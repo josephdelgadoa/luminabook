@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import type { AppStep } from '@/types';
 import { PenTool, Palette, Download, Layers } from 'lucide-react';
 
@@ -40,27 +41,45 @@ export const Shell: React.FC<ShellProps> = ({ currentStep, children }) => {
                 {/* Stepper */}
                 <div className="mb-12">
                     <div className="flex items-center justify-between max-w-3xl mx-auto relative">
-                        {/* Connecting Line */}
+                        {/* Connecting Line Track */}
                         <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-0.5 bg-slate-200 -z-10" />
+
+                        {/* Animated Progress Line */}
+                        <motion.div
+                            className="absolute left-0 top-1/2 -translate-y-1/2 h-0.5 bg-indigo-600 -z-10"
+                            initial={{ width: '0%' }}
+                            animate={{
+                                width: currentStep === 'manuscript' ? '0%' : currentStep === 'visual' ? '50%' : '100%'
+                            }}
+                            transition={{ duration: 0.5, ease: "easeInOut" }}
+                        />
 
                         {steps.map((step, index) => {
                             const isActive = step.id === currentStep;
                             const isPast = steps.findIndex(s => s.id === currentStep) > index;
+                            const isFuture = !isActive && !isPast;
 
                             return (
-                                <div key={step.id} className="flex flex-col items-center gap-3 bg-slate-50 px-4">
-                                    <div
+                                <div key={step.id} className="flex flex-col items-center gap-3 bg-slate-50 px-4 z-10">
+                                    <motion.div
+                                        animate={{
+                                            backgroundColor: isActive || isPast ? '#4f46e6' : '#ffffff',
+                                            borderColor: isActive || isPast ? '#4f46e6' : '#e2e8f0',
+                                            scale: isActive ? 1.1 : 1,
+                                            boxShadow: isActive ? "0 10px 15px -3px rgba(79, 70, 230, 0.3)" : "none"
+                                        }}
+                                        transition={{ duration: 0.3 }}
                                         className={`
-                      w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                      w-10 h-10 rounded-full flex items-center justify-center border-2
                       ${isActive || isPast
-                                                ? 'bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-500/30 ring-4 ring-slate-50'
-                                                : 'bg-white border-slate-200 text-slate-400'
+                                                ? 'text-white'
+                                                : 'text-slate-400'
                                             }
                     `}
                                     >
                                         <step.icon className="w-5 h-5" />
-                                    </div>
-                                    <span className={`text-xs font-medium uppercase tracking-wider ${isActive ? 'text-indigo-400' : 'text-slate-500'}`}>
+                                    </motion.div>
+                                    <span className={`text-xs font-medium uppercase tracking-wider transition-colors duration-300 ${isActive ? 'text-indigo-600 font-bold' : isPast ? 'text-slate-600' : 'text-slate-400'}`}>
                                         {step.label}
                                     </span>
                                 </div>

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { EBook, BookTheme } from '@/types';
 import { generateImage } from '@/services/ai-service';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Type, Image as ImageIcon, Sparkles, RefreshCw, Smartphone, Monitor, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react';
 
 interface VisualStudioProps {
@@ -342,19 +343,26 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     </button>
 
                     {/* The Book Page */}
-                    <div
-                        className={`
-                            transition-all duration-500 ease-in-out bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] relative overflow-hidden
-                            ${previewMode === 'mobile' ? 'w-[375px] h-[667px] rounded-3xl' : 'w-[595px] h-[842px] rounded-sm'}
-                        `}
-                        style={{
-                            fontFamily: currentTheme.fontBody,
-                            backgroundColor: currentTheme.backgroundColor,
-                            color: currentTheme.textColor
-                        }}
-                    >
-                        {renderPageContent()}
-                    </div>
+                    <AnimatePresence mode="wait">
+                        <motion.div
+                            key={currentPage}
+                            initial={{ opacity: 0, scale: 0.95, y: 10 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+                            transition={{ duration: 0.3 }}
+                            className={`
+                                transition-all duration-500 ease-in-out bg-white shadow-[0_20px_50px_-12px_rgba(0,0,0,0.5)] relative overflow-hidden
+                                ${previewMode === 'mobile' ? 'w-[375px] h-[667px] rounded-3xl' : 'w-[595px] h-[842px] rounded-sm'}
+                            `}
+                            style={{
+                                fontFamily: currentTheme.fontBody,
+                                backgroundColor: currentTheme.backgroundColor,
+                                color: currentTheme.textColor
+                            }}
+                        >
+                            {renderPageContent()}
+                        </motion.div>
+                    </AnimatePresence>
                 </div>
 
                 {/* Pagination Indicator */}
