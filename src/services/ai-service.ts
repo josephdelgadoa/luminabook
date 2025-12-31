@@ -12,7 +12,7 @@ const getClient = () => {
     return new OpenAI({
         baseURL: "https://openrouter.ai/api/v1",
         apiKey: apiKey,
-        dangerouslyAllowBrowser: true,
+        dangerouslyAllowBrowser: true, // We are running client-side for this demo
         defaultHeaders: {
             "HTTP-Referer": "https://luminabook.com",
             "X-Title": "Luminabook",
@@ -21,7 +21,7 @@ const getClient = () => {
 };
 
 export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'en'): Promise<Partial<EBook>> => {
-    console.log("Analyzing manuscript via OpenRouter...");
+    console.log("Analyzing manuscript via OpenRouter (Gemini 3 Flash)...");
     try {
         const client = getClient();
         const languageInstruction = language === 'es'
@@ -29,7 +29,7 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
             : "OUTPUT LANGUAGE: ENGLISH.";
 
         const completion = await client.chat.completions.create({
-            model: "google/gemini-3-flash-preview", // Updated to latest Gemini model
+            model: "google/gemini-3-flash-preview",
             messages: [
                 {
                     role: "system",
@@ -72,60 +72,28 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
         }
 
         return json;
-    } catch (error) {
+    } catch (error: any) {
         console.error("Analysis Failed:", error);
         throw error;
     }
 };
 
-export const generateImage = async (prompt: string, _width: number = 1024, _height: number = 1024): Promise<string> => {
-    // List of models to try in order of preference (Quality -> Speed -> Free)
-    // 1. Flux 1.1 Pro (Best Quality)
-    // 2. Flux 1 Schnell (Standard Paid - Fast)
-    // 3. Flux 1 Schnell Free (Free Tier Fallback)
-    const models = [
-        "black-forest-labs/flux-1.1-pro",
-        "black-forest-labs/flux-1-schnell",
-        "black-forest-labs/flux-1-schnell-free"
-    ];
+export const generateImage = async (prompt: string, width: number = 1024, height: number = 1024): Promise<string> => {
+    console.log("Generating Image via Pollinations.ai (Flux)...", { prompt: prompt.substring(0, 50) });
 
-    console.log("Starting Image Generation waterfall...", { prompt: prompt.substring(0, 50) });
+    // OpenRouter currently lists NO image models via API, causing 400 errors with their chat endpoint.
+    // We strictly default to Pollinations (Flux) which is free, fast, and reliable.
+    try {
+        const encodedPrompt = encodeURIComponent(prompt);
+        // Use Flux model via Pollinations
+        // Adding seed randomizer to ensure new images on similar prompts if needed, but for now standard is fine.
+        const seed = Math.floor(Math.random() * 1000000);
+        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&model=flux&nologo=true&seed=${seed}`;
 
-    let lastError: any = null;
+        return url;
 
-    for (const model of models) {
-        try {
-            console.log(`Attempting generation with model: ${model}...`);
-            const client = getClient();
-
-            const response = await client.chat.completions.create({
-                model: model,
-                messages: [{ role: "user", content: prompt }]
-            });
-
-            const content = response.choices[0].message.content || "";
-            // console.log(`Response from ${model}:`, content); // Debug log
-
-            // Extract URL (Handles both Markdown ![image](url) and raw URL)
-            const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
-            let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : null;
-            if (url && url.includes('](')) url = url.split('](')[1].replace(')', '');
-
-            if (url && url.startsWith('http')) {
-                console.log(`Successfully generated image with ${model}`);
-                return url;
-            }
-
-            // If we got a response but no URL, treat as failure and try next
-            console.warn(`No URL found in response from ${model}`);
-
-        } catch (e: any) {
-            console.warn(`Failed with ${model}:`, e.message || e);
-            lastError = e;
-            // Continue to next model in the list
-        }
+    } catch (e: any) {
+        console.error("Pollinations Generation Failed:", e);
+        throw new Error(`Image Generation Failed: ${e.message || "Unknown Error"}`);
     }
-
-    console.error("All image generation attempts failed.");
-    throw new Error(`All models failed. Last error: ${lastError?.message || "Unknown"}`);
 };
