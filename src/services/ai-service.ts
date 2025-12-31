@@ -1,16 +1,16 @@
 import type { EBook } from "../types";
 
-// DeepSeek API Configuration
-const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
-const getApiKey = () => import.meta.env.VITE_DEEPSEEK_API_KEY || '';
+// OpenRouter API Configuration
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+const getApiKey = () => import.meta.env.VITE_OPENROUTER_API_KEY || '';
 
 export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'en'): Promise<Partial<EBook>> => {
-    console.log("Analyzing manuscript via DeepSeek-V3...");
+    console.log("Analyzing manuscript via OpenRouter (DeepSeek-V3)...");
     const apiKey = getApiKey();
 
     if (!apiKey) {
-        console.error("Missing DeepSeek API Key");
-        throw new Error("DeepSeek API Key is missing. Please check .env file.");
+        console.error("Missing OpenRouter API Key");
+        throw new Error("OpenRouter API Key is missing. Please check .env file.");
     }
 
     try {
@@ -50,14 +50,16 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
 
         const userMessage = `INPUT TEXT:\n${text}`;
 
-        const response = await fetch(DEEPSEEK_API_URL, {
+        const response = await fetch(OPENROUTER_API_URL, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`
+                'Authorization': `Bearer ${apiKey}`,
+                'HTTP-Referer': 'https://luminabook.com', // Required by OpenRouter
+                'X-Title': 'Luminabook' // Required by OpenRouter
             },
             body: JSON.stringify({
-                model: "deepseek-chat",
+                model: "deepseek/deepseek-chat",
                 messages: [
                     { role: "system", content: systemPrompt },
                     { role: "user", content: userMessage }
@@ -68,8 +70,8 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
 
         if (!response.ok) {
             const errText = await response.text();
-            console.error("DeepSeek API Error:", response.status, errText);
-            throw new Error(`DeepSeek API Failed: ${response.status}`);
+            console.error("OpenRouter API Error:", response.status, errText);
+            throw new Error(`OpenRouter API Failed: ${response.status}`);
         }
 
         const data = await response.json();
