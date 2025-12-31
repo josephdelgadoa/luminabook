@@ -162,22 +162,73 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
 };
 
 export const generateImage = async (prompt: string, width: number = 1024, height: number = 1024): Promise<string> => {
-    // Primary: Pollinations.ai (Free, Fast, Reliable)
-    // We switched to this because OpenRouter was returning 400/405 errors for Flux models via API.
+    // Strategy: Try OpenRouter (Flux) first for high quality/no limits using simple fetch.
+    // Fallback to Pollinations if that fails.
+
+    // 1. Try OpenRouter (Flux-Schnell) with fetch to bypass SDK complexity
     try {
-        console.log("Generating image via Pollinations.ai...");
+        const apiKey = getApiKey();
+        if (apiKey) {
+            console.log("Generating image via OpenRouter (Flux/Fetch)...", { width, height });
+            // Note: Flux on OpenRouter ignores Width/Height params in chat completion, 
+            // but we pass standard prompt.
+
+            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${apiKey}`,
+                    "HTTP-Referer": "https://luminabook.com",
+                    "X-Title": "Luminabook",
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                    model: "black-forest-labs/flux-1-schnell",
+                    messages: [
+                        { role: "user", content: prompt }
+                    ]
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`OpenRouter API Error: ${response.status} - ${errText}`);
+            }
+
+            const data = await response.json();
+            const content = data.choices?.[0]?.message?.content || "";
+
+            // OpenRouter Flux usually returns a Markdown Image link: ![image](url)
+            // Or sometimes just the URL.
+            // Regex to find http/https links
+            const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
+            let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : null;
+
+            if (url && url.includes('](')) {
+                url = url.split('](')[1].replace(')', '');
+            }
+
+            if (url && url.startsWith('http')) {
+                return url;
+            }
+            console.warn("No URL found in OpenRouter response:", content);
+        }
+    } catch (e) {
+        console.error("OpenRouter Generation Failed:", e);
+        // Continue to fallback...
+    }
+
+    // 2. Fallback: Pollinations.ai (Free, Fast, but Rate Limited)
+    try {
+        console.log("Falling back to Pollinations.ai...");
         const seed = Math.floor(Math.random() * 1000000);
-        // Add specific style modifiers for better results
-        const enhancedPrompt = `${prompt} . highly detailed, cinematic lighting, 8k resolution, photorealistic, masterpiece`;
+        // Add specific style modifiers
+        const enhancedPrompt = `${prompt} . highly detailed, cinematic lighting, 8k resolution`;
         const encodedPrompt = encodeURIComponent(enhancedPrompt.substring(0, 800)); // Limit length
 
-        // URL Construction with Seed for consistency + regeneration capability
-        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
-
-        return url;
+        return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
     } catch (e) {
-        console.error("Pollinations Generation Failed:", e);
-        // Emergency Fallback: Placeholders
-        return `https://placehold.co/${width}x${height}/1e293b/ffffff?text=Image+Generation+Failed`;
+        console.error("Pollinations Fallback Failed:", e);
+        // Emergency Fallback
+        return `https://placehold.co/${width}x${height}/1e293b/ffffff?text=Generation+Failed`;
     }
 };
