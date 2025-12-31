@@ -4,7 +4,7 @@ import { generateImage } from '@/services/ai-service';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Maximize2, Minimize2, ChevronLeft, ChevronRight,
-    Wand2, Layers, Type, Download, Share2,
+    Wand2, Layers, Type,
     RefreshCw, AlertCircle, CheckCircle2, Image as ImageIcon
 } from 'lucide-react';
 
