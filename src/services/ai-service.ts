@@ -78,7 +78,7 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
     }
 };
 
-export const generateImage = async (prompt: string, width: number = 1024, height: number = 1024): Promise<string> => {
+export const generateImage = async (prompt: string, _width: number = 1024, _height: number = 1024): Promise<string> => {
     console.log("Generating Image via Flux 1.1 Pro...", { prompt: prompt.substring(0, 50) });
 
     try {
