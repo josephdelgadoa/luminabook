@@ -139,16 +139,6 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
     }
 };
 
-// Deterministic color generator string -> hex
-const stringToColor = (str: string) => {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-    return "00000".substring(0, 6 - c.length) + c;
-};
-
 // Helper to generate a random seed
 const generateSeed = () => Math.floor(Math.random() * 1000000);
 
