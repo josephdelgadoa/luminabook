@@ -1,23 +1,22 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
-import type { EBook } from "../types";
-
-// Initialize client
-const apiKey = import.meta.env.VITE_GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
-console.log("AI Service Initialized. Key present:", !!apiKey, "Length:", apiKey.length);
+// DeepSeek API Configuration
+const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
+const getApiKey = () => import.meta.env.VITE_DEEPSEEK_API_KEY || '';
 
 export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'en'): Promise<Partial<EBook>> => {
-    console.log("Analyzing manuscript via Gemini-2.5-flash...");
+    console.log("Analyzing manuscript via DeepSeek-V3...");
+    const apiKey = getApiKey();
+
+    if (!apiKey) {
+        console.error("Missing DeepSeek API Key");
+        throw new Error("DeepSeek API Key is missing. Please check .env file.");
+    }
 
     try {
-        // Verified available model: gemini-2.5-flash
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
-
         const languageInstruction = language === 'es'
             ? "OUTPUT LANGUAGE: SPANISH (Español). ensure all titles, summaries, and descriptions are in Spanish."
             : "OUTPUT LANGUAGE: ENGLISH.";
 
-        const prompt = `
+        const systemPrompt = `
         You are an Elite Book Designer. Your task is to structure a book based on the user's input.
         
         ${languageInstruction}
@@ -45,25 +44,46 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
 
         Ensure proper paragraph separation with \\n\\n. 
         Return ONLY raw JSON. No markdown backticks.
-
-        INPUT TEXT:
-        ${text}
         `;
 
-        const result = await model.generateContent(prompt);
-        const response = await result.response;
-        const textResponse = response.text();
+        const userMessage = `INPUT TEXT:\n${text}`;
 
-        console.log("AI Response received (truncated):", textResponse.substring(0, 100));
+        const response = await fetch(DEEPSEEK_API_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [
+                    { role: "system", content: systemPrompt },
+                    { role: "user", content: userMessage }
+                ],
+                stream: false
+            })
+        });
+
+        if (!response.ok) {
+            const errText = await response.text();
+            console.error("DeepSeek API Error:", response.status, errText);
+            throw new Error(`DeepSeek API Failed: ${response.status}`);
+        }
+
+        const data = await response.json();
+        const content = data.choices[0]?.message?.content || "";
+
+        console.log("AI Response received (truncated):", content.substring(0, 100));
 
         // Clean markdown if present
-        const cleanJson = textResponse.replace(/```json/g, '').replace(/```/g, '').trim();
+        const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
 
         let json;
         try {
             json = JSON.parse(cleanJson);
         } catch (e) {
             console.error("JSON Parse Error:", e);
+            console.error("Raw Content:", content);
             throw new Error("Invalid JSON response from AI");
         }
 
@@ -93,7 +113,8 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
             const imagePrompt = c.imagePrompt || `Artistic illustration for ${title}`;
 
             // Generate visual placeholder if missing
-            const imageUrl = await generateImage(imagePrompt);
+            // Chapter: Ultra-Wide (16:3), e.g., 1600x300
+            const imageUrl = await generateImage(imagePrompt, 1600, 300);
 
             return {
                 ...c,
@@ -108,7 +129,8 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
         // Generate cover if missing
         if (!json.coverImageUrl) {
             const coverPrompt = json.coverPrompt || `Book cover for ${json.title}`;
-            json.coverImageUrl = await generateImage(coverPrompt);
+            // Cover: Portrait (2:3 approx), e.g., 800x1200
+            json.coverImageUrl = await generateImage(coverPrompt, 800, 1200);
         }
 
         return json;
@@ -116,10 +138,7 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
     } catch (error: any) {
         console.error("AI Analysis CRITICAL FAILURE:", error);
 
-
-
         // Fail-safe: Return clean structure instead of scary error
-        // This allows the user to continue working even if AI failed
         return {
             title: "Draft Manuscript (Offline Mode)",
             description: "The AI service was temporarily unavailable, but your manuscript has been safely loaded into the editor.",
@@ -130,11 +149,11 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
                     title: "Manuscript Content",
                     content: text,
                     summary: "Full original text content (Raw Import).",
-                    imagePrompt: "Writing workspace, vintage typewritter",
-                    imageUrl: await generateImage("Writing workspace, vintage typewritter")
+                    imagePrompt: "Writing workspace, vintage typewriter",
+                    imageUrl: await generateImage("Writing workspace, vintage typewriter", 1600, 300)
                 }
             ],
-            coverImageUrl: await generateImage("Minimalist book cover, abstract")
+            coverImageUrl: await generateImage("Minimalist book cover, abstract", 800, 1200)
         };
     }
 };
