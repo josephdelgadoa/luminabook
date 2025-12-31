@@ -112,28 +112,60 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     const renderPageContent = () => {
         if (currentPage === 0) {
             // FRONT COVER
+            // FRONT COVER - PROFESSIONAL REDESIGN
             return (
                 <div className="h-full flex flex-col relative overflow-hidden">
                     {book.coverImageUrl && (
                         <div className="absolute inset-0 z-0">
-                            <img src={book.coverImageUrl} className="w-full h-full object-cover opacity-80" alt="Cover" />
-                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/40" />
+                            {/* Main Image */}
+                            <img src={book.coverImageUrl} className="w-full h-full object-cover" alt="Cover" />
+
+                            {/* Professional Gradient Overlay Strategy */}
+                            {/* Top Gradient: Darkens top 40% for Title Readability */}
+                            <div className="absolute top-0 left-0 right-0 h-[40%] bg-gradient-to-b from-black/90 via-black/40 to-transparent" />
+
+                            {/* Bottom Gradient: Darkens bottom 30% for Author Name */}
+                            <div className="absolute bottom-0 left-0 right-0 h-[30%] bg-gradient-to-t from-black/90 via-black/40 to-transparent" />
                         </div>
                     )}
-                    <div className="flex-1 flex flex-col items-center justify-center p-12 text-center z-10 relative">
-                        <h1
-                            className="text-lg md:text-xl font-bold mb-4 leading-tight drop-shadow-2xl"
-                            style={{
-                                fontFamily: currentTheme.fontHeading,
-                                color: book.coverImageUrl ? '#fff' : currentTheme.primaryColor
-                            }}
-                        >
-                            {book.title || "Untitled Book"}
-                        </h1>
-                        <div className="w-16 h-1 bg-current opacity-80 my-8 mx-auto shadow-lg" style={{ color: book.coverImageUrl ? '#fff' : currentTheme.primaryColor }} />
-                        <p className={`text-xl uppercase tracking-[0.2em] font-medium ${book.coverImageUrl ? 'text-white' : 'opacity-80'}`}>
-                            {book.author || "Joseph Delgado"}
-                        </p>
+
+                    {/* Content Layer with Distributed Layout */}
+                    <div className="flex-1 flex flex-col justify-between p-12 z-10 relative h-full">
+
+                        {/* TITLE SECTION (Top 25-40%) */}
+                        <div className="mt-4 md:mt-8 text-center">
+                            <h1
+                                className="text-4xl md:text-6xl font-bold leading-tight"
+                                style={{
+                                    fontFamily: currentTheme.fontHeading,
+                                    color: book.coverImageUrl ? '#FFFFFF' : currentTheme.primaryColor,
+                                    // Soft Drop Shadow (No Stroke/Border)
+                                    textShadow: book.coverImageUrl ? '0 4px 30px rgba(0,0,0,0.6)' : 'none'
+                                }}
+                            >
+                                {book.title || "Untitled Book"}
+                            </h1>
+                            {/* Optional Tagline Placeholder */}
+                            <p className="mt-4 text-white/80 text-sm md:text-base font-light italic tracking-wider drop-shadow-md">
+                                {book.description ? book.description.substring(0, 50) + "..." : "A LuminaBook Original"}
+                            </p>
+                        </div>
+
+                        {/* AUTHOR SECTION (Bottom) */}
+                        <div className="mb-4 md:mb-8 text-center">
+                            <div className="w-12 h-1 bg-white/60 mx-auto mb-6 shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
+                            <p
+                                className="text-xl md:text-2xl font-medium tracking-[0.2em] uppercase"
+                                style={{
+                                    fontFamily: currentTheme.fontBody,
+                                    // Use off-white/gold hint for author
+                                    color: book.coverImageUrl ? '#f1f5f9' : currentTheme.textColor,
+                                    textShadow: book.coverImageUrl ? '0 2px 20px rgba(0,0,0,0.8)' : 'none'
+                                }}
+                            >
+                                {book.author || "Joseph Delgado"}
+                            </p>
+                        </div>
                     </div>
                 </div>
             );
