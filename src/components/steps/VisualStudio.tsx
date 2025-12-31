@@ -1,11 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import type { EBook } from '@/types';
 import { generateImage } from '@/services/ai-service';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-    Maximize2, Minimize2, ChevronLeft, ChevronRight,
+    Maximize2, Minimize2,
     Wand2, Layers, Type,
-    RefreshCw, AlertCircle, CheckCircle2, Image as ImageIcon
+    RefreshCw, AlertCircle, CheckCircle2, Image as ImageIcon,
+    BookOpen
 } from 'lucide-react';
 
 interface VisualStudioProps {
@@ -13,45 +14,45 @@ interface VisualStudioProps {
     setBook: (book: Partial<EBook>) => void;
 }
 
-// "Art Director" Layout -> Dedicated Canvas + Control Panel
 export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => {
     // State
-    const [currentPage, setCurrentPage] = useState(0); // 0 = Cover, 1...N = Chapters
+    const [selectedSectionId, setSelectedSectionId] = useState<string | 'cover'>('cover');
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [promptText, setPromptText] = useState("");
     const [showUI, setShowUI] = useState(true);
 
-    // Derived
-    const totalChapters = book.chapters?.length || 0;
-    const totalPages = totalChapters + 1; // Cover + Chapters
+    // Derived Selectors
+    const isCoverSelected = selectedSectionId === 'cover';
+    const selectedChapterIndex = book.chapters?.findIndex(c => c.id === selectedSectionId) ?? -1;
+    const selectedChapter = selectedChapterIndex >= 0 ? book.chapters?.[selectedChapterIndex] : null;
 
-    // Determine context
-    const isCover = currentPage === 0;
-    const currentChapter = !isCover ? book.chapters?.[currentPage - 1] : null;
-
-    // Sync prompt text when navigating
-    useEffect(() => {
-        if (isCover) {
+    // Helper to update prompt when selection changes
+    React.useEffect(() => {
+        if (isCoverSelected) {
             setPromptText(book.coverImagePrompt || `Epic cinematic book cover for "${book.title}". Highly detailed, 8k resolution.`);
-        } else if (currentChapter) {
-            setPromptText(currentChapter.imagePrompt || `Atmospheric illustration for ${currentChapter.title}. Photorealistic, dramatic lighting.`);
+        } else if (selectedChapter) {
+            setPromptText(selectedChapter.imagePrompt || `Wide cinematic shot for ${selectedChapter.title}. Panoramic, detailed.`);
         }
-    }, [currentPage, book.coverImagePrompt, currentChapter?.imagePrompt]);
+    }, [selectedSectionId, book.coverImagePrompt, selectedChapter?.imagePrompt]);
 
     const handleGenerate = async () => {
         setIsGenerating(true);
         setError(null);
 
         try {
-            const url = await generateImage(promptText);
+            // Force 16:3 aspect ratio logic for prompts if needed, or just let Flux handle it via style
+            const styleSuffix = isCoverSelected ? "" : ", cinematic panoramic, wide aspect ratio";
+            const finalPrompt = promptText + (promptText.includes('aspect') ? '' : styleSuffix);
 
-            if (isCover) {
+            const url = await generateImage(finalPrompt);
+
+            if (isCoverSelected) {
                 setBook({ ...book, coverImageUrl: url, coverImagePrompt: promptText });
-            } else if (currentChapter) {
+            } else if (selectedChapter) {
                 const newChapters = [...(book.chapters || [])];
-                newChapters[currentPage - 1] = {
-                    ...currentChapter,
+                newChapters[selectedChapterIndex] = {
+                    ...selectedChapter,
                     imageUrl: url,
                     imagePrompt: promptText
                 };
@@ -64,94 +65,116 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
         }
     };
 
-    const handleNext = () => setCurrentPage(p => Math.min(p + 1, totalPages - 1));
-    const handlePrev = () => setCurrentPage(p => Math.max(p - 1, 0));
-
-    // Current Image to Display
-    const activeImage = isCover ? book.coverImageUrl : currentChapter?.imageUrl;
-    const activeTitle = isCover ? book.title : currentChapter?.title;
+    // Rendering Helpers
+    const activeImage = isCoverSelected ? book.coverImageUrl : selectedChapter?.imageUrl;
 
     return (
         <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden rounded-2xl border border-white/10 shadow-2xl relative">
 
-            {/* BACKGROUND BLUR (Ambient) */}
-            {activeImage && (
-                <div
-                    className="absolute inset-0 opacity-20 blur-3xl saturate-200 pointer-events-none transition-all duration-1000"
-                    style={{ backgroundImage: `url(${activeImage})`, backgroundSize: 'cover' }}
-                />
-            )}
+            {/* LEFT: THE SCROLLABLE CANVAS (Full Book View) */}
+            <div className={`relative flex-1 h-full overflow-y-auto custom-scrollbar transition-all duration-500 ease-in-out ${showUI ? 'lg:mr-[400px]' : ''}`}>
+                <div className="max-w-4xl mx-auto min-h-full pb-32">
 
-            {/* LEFT: THE CANVAS (Preview) */}
-            <div className={`relative flex-1 flex flex-col items-center justify-center p-8 transition-all duration-500 ease-in-out ${showUI ? 'lg:mr-[400px]' : ''}`}>
-
-                {/* Book Representation */}
-                <motion.div
-                    initial={{ opacity: 0, scale: 0.9 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    key={currentPage}
-                    className="relative w-full max-w-lg aspect-[1/1.5] shadow-[0_50px_100px_-20px_rgba(0,0,0,0.5)] rounded-lg overflow-hidden border border-white/5 bg-slate-900 group"
-                >
-                    {activeImage ? (
-                        <img
-                            src={activeImage}
-                            alt="Book Asset"
-                            className="w-full h-full object-cover"
-                        />
-                    ) : (
-                        <div className="w-full h-full flex flex-col items-center justify-center text-white/20">
-                            <ImageIcon size={64} strokeWidth={1} />
-                            <p className="mt-4 font-light tracking-widest text-xs uppercase">No Asset Generated</p>
-                        </div>
-                    )}
-
-                    {/* Overlay Text Preview (Cinematic "Surprise" Layout) */}
-                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none p-6 lg:p-12">
-
-                        {/* Top Gradient & Title */}
-                        <div className="w-full bg-gradient-to-b from-black/80 via-black/40 to-transparent pt-8 pb-12 px-4 rounded-t-lg">
-                            <h1 className={`font-serif font-bold text-center drop-shadow-2xl text-white ${isCover ? 'text-4xl lg:text-5xl tracking-tight leading-tight' : 'text-2xl'}`}>
-                                {activeTitle}
-                            </h1>
-
-                            {/* Author Name - SURPRISE: Elegant, Gold-tinted, Spaced Out */}
-                            {isCover && (
-                                <div className="mt-4 flex flex-col items-center">
-                                    <div className="h-px w-24 bg-amber-500/50 mb-3 blur-[1px]" />
-                                    <p className="text-center font-sans font-light text-amber-100/90 text-sm lg:text-base tracking-[0.3em] uppercase drop-shadow-md">
-                                        {book.author || "Joseph Delgado"}
-                                    </p>
-                                    <div className="h-px w-24 bg-amber-500/50 mt-3 blur-[1px]" />
+                    {/* --- 1. COVER SECTION --- */}
+                    <div
+                        onClick={() => setSelectedSectionId('cover')}
+                        className={`relative group cursor-pointer transition-all duration-300 ${isCoverSelected ? 'ring-2 ring-amber-500' : 'hover:ring-1 hover:ring-white/20'}`}
+                    >
+                        {/* Full Height Cover Wrapper */}
+                        <div className="relative w-full aspect-[2/3] lg:aspect-[16/9] lg:h-[80vh] overflow-hidden">
+                            {book.coverImageUrl ? (
+                                <img src={book.coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white/20">
+                                    <ImageIcon size={64} strokeWidth={1} />
+                                    <p className="mt-4 text-xs tracking-widest uppercase">Cover Placeholder</p>
                                 </div>
                             )}
+
+                            {/* Cinematic Overlay */}
+                            <div className="absolute inset-0 flex flex-col justify-end p-12 bg-gradient-to-t from-black via-black/40 to-transparent">
+                                <h1 className="font-serif text-5xl lg:text-7xl font-bold text-center text-white drop-shadow-2xl mb-8">
+                                    {book.title || "Untitled Book"}
+                                </h1>
+                                <div className="flex flex-col items-center">
+                                    <div className="h-px w-32 bg-amber-500/50 mb-4 blur-[1px]" />
+                                    <p className="font-sans font-light text-amber-100/90 text-lg tracking-[0.4em] uppercase drop-shadow-md">
+                                        {book.author || "Joseph Delgado"}
+                                    </p>
+                                    <div className="h-px w-32 bg-amber-500/50 mt-4 blur-[1px]" />
+                                </div>
+                            </div>
                         </div>
 
-                        {/* Bottom Gradient for Contrast if Chapter */}
-                        {!isCover && currentChapter && (
-                            <div className="bg-gradient-to-t from-black/90 to-transparent p-6 rounded-b-lg">
-                                <p className="text-white/80 text-center text-sm italic">{currentChapter.title}</p>
+                        {/* Selection Indicator */}
+                        {isCoverSelected && (
+                            <div className="absolute top-4 right-4 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-lg z-10">
+                                <Wand2 size={12} /> EDITING COVER
                             </div>
                         )}
                     </div>
-                </motion.div>
 
-                {/* Navigation Floating Bar */}
-                <div className="absolute bottom-8 flex items-center gap-4 bg-black/50 backdrop-blur-md px-6 py-3 rounded-full border border-white/10">
-                    <button onClick={handlePrev} disabled={currentPage === 0} className="hover:text-amber-400 disabled:opacity-30 transition-colors">
-                        <ChevronLeft />
-                    </button>
-                    <span className="text-xs font-mono tracking-widest w-32 text-center text-white/70">
-                        {isCover ? "FRONT COVER" : `CHAPTER ${currentPage} / ${totalChapters}`}
-                    </span>
-                    <button onClick={handleNext} disabled={currentPage === totalPages - 1} className="hover:text-amber-400 disabled:opacity-30 transition-colors">
-                        <ChevronRight />
-                    </button>
+                    {/* --- 2. BOOK CONTENT (Chapters) --- */}
+                    <div className="px-8 lg:px-16 py-16 space-y-24 bg-neutral-900/50">
+                        {book.chapters?.map((chapter, index) => {
+                            const isSelected = selectedSectionId === chapter.id;
+
+                            // 16:3 Aspect Ratio for Banner
+                            // Tailwind doesn't have 16/3 built-in, using custom style or approximate
+                            return (
+                                <div
+                                    key={chapter.id || index}
+                                    id={`chapter-${chapter.id}`}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedSectionId(chapter.id || 'cover');
+                                    }}
+                                    className={`relative rounded-xl overflow-hidden transition-all duration-300 border ${isSelected ? 'border-amber-500 shadow-2xl shadow-amber-900/20' : 'border-white/5 hover:border-white/20'}`}
+                                >
+                                    {/* Chapter Banner Image (16:3) */}
+                                    <div className="relative w-full aspect-[16/5] bg-slate-800 overflow-hidden group">
+                                        {chapter.imageUrl ? (
+                                            <img src={chapter.imageUrl} alt={chapter.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center text-white/10">
+                                                <ImageIcon size={32} />
+                                            </div>
+                                        )}
+
+                                        {/* Chapter Title Overlay */}
+                                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent">
+                                            <h2 className="font-serif text-3xl text-white font-bold">{chapter.title}</h2>
+                                        </div>
+
+                                        {isSelected && (
+                                            <div className="absolute top-4 right-4 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-lg">
+                                                <Wand2 size={12} /> EDITING
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Full Text Content */}
+                                    <div className="p-8 lg:p-12 bg-black/40 text-gray-300 leading-relaxed font-serif text-lg space-y-6">
+                                        {chapter.content?.split('\n').map((para, i) => (
+                                            para.trim() && <p key={i}>{para.trim()}</p>
+                                        ))}
+                                        {!chapter.content && <p className="italic opacity-30">No content available for this chapter.</p>}
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    {/* End of Book Marker */}
+                    <div className="flex justify-center pb-16 opacity-30">
+                        <BookOpen size={24} />
+                    </div>
                 </div>
 
                 {/* UI Toggle */}
                 <button
                     onClick={() => setShowUI(!showUI)}
-                    className="absolute top-8 right-8 p-3 rounded-full bg-black/50 hover:bg-white/10 backdrop-blur-md border border-white/10 transition-all"
+                    className="fixed top-8 right-8 z-30 p-3 rounded-full bg-black/50 hover:bg-white/10 backdrop-blur-md border border-white/10 transition-all"
                 >
                     {showUI ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
                 </button>
@@ -165,13 +188,15 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="absolute right-0 top-0 bottom-0 w-full lg:w-[400px] bg-black/80 backdrop-blur-xl border-l border-white/10 flex flex-col z-20"
+                        className="absolute right-0 top-0 bottom-0 w-full lg:w-[400px] bg-black/80 backdrop-blur-xl border-l border-white/10 flex flex-col z-20 shadow-2xl"
                     >
                         {/* Header */}
-                        <div className="p-6 border-b border-white/10 flex items-center justify-between">
+                        <div className="p-6 border-b border-white/10 flex items-center justify-between bg-black/20">
                             <div>
                                 <h2 className="text-sm font-bold uppercase tracking-widest text-white/90">Art Director</h2>
-                                <p className="text-[10px] text-white/50 mt-1">Pollinations (Flux) Engine</p>
+                                <p className="text-[10px] text-white/50 mt-1">
+                                    {isCoverSelected ? 'Editing: FRONT COVER' : 'Editing: CHAPTER SCENE'}
+                                </p>
                             </div>
                             <Wand2 className="text-amber-400 w-5 h-5" />
                         </div>
@@ -189,13 +214,13 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                     value={promptText}
                                     onChange={(e) => setPromptText(e.target.value)}
                                     className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-4 text-sm leading-relaxed text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50 resize-none transition-all"
-                                    placeholder="Describe the scene in detail..."
+                                    placeholder={isCoverSelected ? "Describe the book cover..." : "Describe the chapter scene..."}
                                 />
-                                <div className="flex gap-2">
-                                    {['Cinematic', 'Minimalist', 'Noir', 'Oil Painting'].map(style => (
+                                <div className="flex flex-wrap gap-2">
+                                    {['Cinematic', 'Noir', 'Wide Shot', 'Detail'].map(style => (
                                         <button
                                             key={style}
-                                            onClick={() => setPromptText(p => p + `, ${style} style`)}
+                                            onClick={() => setPromptText(p => p + `, ${style}`)}
                                             className="text-[10px] px-3 py-1 bg-white/5 hover:bg-white/10 rounded-full border border-white/10 transition-colors"
                                         >
                                             +{style}
@@ -244,20 +269,12 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 </div>
                                 <div className="grid grid-cols-2 gap-4 text-[10px] text-white/50">
                                     <div>
-                                        <span className="block text-white/30">Model</span>
-                                        Flux 1.1 Pro
+                                        <span className="block text-white/30">Ratio</span>
+                                        {isCoverSelected ? '2:3 (Portrait)' : '16:5 (Banner)'}
                                     </div>
                                     <div>
-                                        <span className="block text-white/30">Resolution</span>
-                                        1024x1536
-                                    </div>
-                                    <div>
-                                        <span className="block text-white/30">Aspect</span>
-                                        2:3 (Portrait)
-                                    </div>
-                                    <div>
-                                        <span className="block text-white/30">Format</span>
-                                        PNG
+                                        <span className="block text-white/30">Engine</span>
+                                        Pollinations (Flux)
                                     </div>
                                 </div>
                             </div>
