@@ -75,10 +75,17 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
         let cursorY = marginTop;
 
         // Chapter Header
+        const isIntro = /intro|prologue|prólogo|preface|prefacio/i.test(chapter.title);
+
         doc.setFontSize(fmt.fontSize.chapter);
         doc.setFont("helvetica", "bold");
-        doc.text(`Chapter ${index + 1}`, marginX, cursorY);
-        cursorY += 10;
+
+        if (!isIntro) {
+            const previousChapters = book.chapters.slice(0, index + 1).filter(c => !/intro|prologue|prólogo|preface|prefacio/i.test(c.title));
+            const chapterNum = previousChapters.length;
+            doc.text(`Chapter ${chapterNum}`, marginX, cursorY);
+            cursorY += 10;
+        }
 
         doc.setFontSize(fmt.fontSize.title);
         doc.text(chapter.title, marginX, cursorY);

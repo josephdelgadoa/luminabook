@@ -161,7 +161,16 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     <div className="flex-1 overflow-y-auto p-8 md:p-12 custom-scrollbar">
                         <div className="max-w-xl mx-auto">
                             <div className="text-center mb-12">
-                                <span className="text-xs font-bold uppercase tracking-widest opacity-40 mb-2 block">Chapter {chapterIndex + 1}</span>
+                                <span className="text-xs font-bold uppercase tracking-widest opacity-40 mb-2 block">
+                                    {(() => {
+                                        if (/intro|prologue|prólogo|preface|prefacio/i.test(chapter.title)) {
+                                            return "";
+                                        }
+                                        const prevChapters = book.chapters?.slice(0, chapterIndex + 1).filter(c => !/intro|prologue|prólogo|preface|prefacio/i.test(c.title));
+                                        const num = prevChapters?.length || (chapterIndex + 1);
+                                        return `Chapter ${num}`;
+                                    })()}
+                                </span>
                                 <h2
                                     className="text-3xl md:text-4xl font-bold mb-8"
                                     style={{ fontFamily: currentTheme.fontHeading, color: currentTheme.primaryColor }}
@@ -320,7 +329,16 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                                 </button>
 
                                                 <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
-                                                    <span className="text-[10px] text-white font-medium truncate block">{i + 1}. {chapter.title}</span>
+                                                    <span className="text-[10px] text-white font-medium truncate block">
+                                                        {(() => {
+                                                            if (/intro|prologue|prólogo|preface|prefacio/i.test(chapter.title)) {
+                                                                return chapter.title;
+                                                            }
+                                                            const prevChapters = book.chapters?.slice(0, i + 1).filter(c => !/intro|prologue|prólogo|preface|prefacio/i.test(c.title));
+                                                            const num = prevChapters?.length || (i + 1);
+                                                            return `${num}. ${chapter.title}`;
+                                                        })()}
+                                                    </span>
                                                 </div>
                                             </div>
                                         ))}

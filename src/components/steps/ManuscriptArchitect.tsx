@@ -30,13 +30,16 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
     };
 
     const getChapterLabel = (index: number, title: string) => {
-        const lowerTitle = title.toLowerCase();
-        const isIntro = lowerTitle.includes('intro') || lowerTitle.includes('prologue') || lowerTitle.includes('prólogo') || lowerTitle.includes('preface') || lowerTitle.includes('prefacio');
+        const isIntro = (t: string) => /intro|prologue|prólogo|preface|prefacio/i.test(t);
 
-        if (isIntro) return null; // No label for intros
+        if (isIntro(title)) return null;
+
+        // Count how many non-intro chapters exist up to this point
+        const previousChapters = book.chapters?.slice(0, index + 1).filter(c => !isIntro(c.title));
+        const chapterNum = previousChapters?.length || (index + 1);
 
         const labelStr = language === 'es' ? 'Capítulo' : 'Chapter';
-        return `${labelStr} ${index + 1}`;
+        return `${labelStr} ${chapterNum}`;
     };
 
 
