@@ -110,9 +110,9 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
             const summary = c.summary || `A section covering ${title}.`;
             const imagePrompt = c.imagePrompt || `Artistic illustration for ${title}`;
 
-            // Generate visual placeholder if missing
-            // Chapter: Ultra-Wide (16:3), e.g., 1600x300
-            const imageUrl = await generateImage(imagePrompt, 1600, 300);
+            // SKIP Image Generation for chapters during initial analysis to save time/cost.
+            // User can generate them manually via the UI "Generate" button.
+            const imageUrl = "";
 
             return {
                 ...c,
@@ -120,15 +120,20 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
                 title,
                 summary,
                 imagePrompt,
-                imageUrl, // Assign the generated image URL (which helps UI show something immediately)
+                imageUrl,
             };
         }));
 
-        // Generate cover if missing
+        // Generate cover if missing (We do this one as it defines the book first impression)
         if (!json.coverImageUrl) {
             const coverPrompt = json.coverPrompt || `Book cover for ${json.title}`;
-            // Cover: Portrait (2:3 approx), e.g., 800x1200
-            json.coverImageUrl = await generateImage(coverPrompt, 800, 1200);
+            try {
+                // Cover: Portrait
+                json.coverImageUrl = await generateImage(coverPrompt, 800, 1200);
+            } catch (imgError) {
+                console.error("Failed to generate cover:", imgError);
+                json.coverImageUrl = ""; // Fallback to empty (will show placeholder/generator)
+            }
         }
 
         return json;
@@ -136,35 +141,50 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
     } catch (error: any) {
         console.error("AI Analysis CRITICAL FAILURE:", error);
 
-        // Fail-safe: Return clean structure instead of scary error
+        // Fail-safe
         return {
             title: "Draft Manuscript (Offline Mode)",
-            description: "The AI service was temporarily unavailable, but your manuscript has been safely loaded into the editor.",
+            description: "The AI service was temporarily unavailable.",
             author: "Author",
             chapters: [
                 {
                     id: Math.random().toString(36).substring(2, 9),
                     title: "Manuscript Content",
                     content: text,
-                    summary: "Full original text content (Raw Import).",
+                    summary: "Full original text content.",
                     imagePrompt: "Writing workspace, vintage typewriter",
-                    imageUrl: await generateImage("Writing workspace, vintage typewriter", 1600, 300)
+                    imageUrl: ""
                 }
             ],
-            coverImageUrl: await generateImage("Minimalist book cover, abstract", 800, 1200)
+            coverImageUrl: ""
         };
     }
 };
 
-// Helper to generate a random seed
-const generateSeed = () => Math.floor(Math.random() * 1000000);
-
 export const generateImage = async (prompt: string, width: number = 1024, height: number = 1024): Promise<string> => {
-    // We use Pollinations.ai for real generative images
-    // Append a random seed to ensure regeneration works
-    const seed = generateSeed();
-    const encodedPrompt = encodeURIComponent(prompt.substring(0, 500)); // Limit prompt length safely
+    try {
+        const client = getClient();
+        console.log("Generating image via OpenRouter (Flux-Schnell)...", { prompt, width, height });
 
-    // Pollinations URL format: https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}&seed={seed}&nologo=true
-    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
+        const response = await client.images.generate({
+            model: "black-forest-labs/flux-1-schnell",
+            prompt: prompt,
+            // OpenRouter/Flux often ignores these or requires standard sizes.
+            // We'll pass standard 1024x1024 to ensure compatibility unless specific aspect support is verified.
+            // size: "1024x1024", 
+            n: 1,
+        });
+
+        const url = response.data[0]?.url;
+        if (!url) throw new Error("No image URL returned");
+
+        return url;
+    } catch (e) {
+        console.error("Image Generation Failed:", e);
+        // Fallback to Pollinations if OpenRouter fails (e.g. model not supported/credits issue)
+        console.log("Falling back to Pollinations...");
+        const seed = Math.floor(Math.random() * 1000000);
+        const encodedPrompt = encodeURIComponent(prompt.substring(0, 500));
+        return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
+    }
 };
