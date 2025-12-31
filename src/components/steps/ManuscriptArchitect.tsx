@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { EBook } from '@/types';
 import { motion } from 'framer-motion';
 import { analyzeManuscript } from '@/services/ai-service';
-import { Sparkles, ArrowRight, FileText } from 'lucide-react';
+import { Sparkles, ArrowRight, FileText, Terminal } from 'lucide-react';
 
 interface ManuscriptArchitectProps {
     book: Partial<EBook>;
@@ -35,10 +35,6 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
 
         if (isIntro) return null; // No label for intros
 
-        // Calculate actual chapter number (adjusting for previous intros)
-        // Simple heuristic: just count it as chapter index for now, but in a real app might need dynamic reducing
-        // For this UI, we will just use the index+1 but conditionally hide the label if intro
-
         const labelStr = language === 'es' ? 'Capítulo' : 'Chapter';
         return `${labelStr} ${index + 1}`;
     };
@@ -46,129 +42,151 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
 
 
     return (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 h-full">
-            {/* Input Section */}
-            <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-serif text-slate-900 flex items-center gap-2">
-                        <FileText className="w-6 h-6 text-indigo-600" />
-                        Raw Manuscript
-                    </h2>
-                    <div className="flex items-center gap-2">
-                        <div className="bg-slate-100 p-1 rounded-lg flex text-xs font-medium">
-                            <button
-                                onClick={() => setLanguage('en')}
-                                className={`px-3 py-1 rounded-md transition-all ${language === 'en' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                English
-                            </button>
-                            <button
-                                onClick={() => setLanguage('es')}
-                                className={`px-3 py-1 rounded-md transition-all ${language === 'es' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                            >
-                                Español
-                            </button>
-                        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 h-full min-h-[800px] overflow-hidden rounded-3xl shadow-2xl">
+
+            {/* LEFT PANEL: The AI Terminal (Dark Mode) */}
+            <div className="bg-slate-950 p-8 lg:p-12 flex flex-col border-r border-slate-800 relative z-10">
+                <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+                    <Terminal className="w-64 h-64 text-white" />
+                </div>
+
+                <div className="flex items-center justify-between mb-8 relative z-20">
+                    <div>
+                        <h2 className="text-3xl font-sans font-bold text-white tracking-tight flex items-center gap-3">
+                            <span className="w-2 h-8 bg-indigo-500 rounded-full"></span>
+                            Manuscript Input
+                        </h2>
+                        <p className="text-slate-400 mt-2 text-sm">Paste your raw text to begin architectural structuring.</p>
                     </div>
                 </div>
 
-                <div className="relative group">
+                <div className="bg-slate-900/50 p-1 rounded-xl flex w-fit mb-6 border border-slate-800">
+                    <button
+                        onClick={() => setLanguage('en')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${language === 'en' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        English Input
+                    </button>
+                    <button
+                        onClick={() => setLanguage('es')}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${language === 'es' ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/30' : 'text-slate-400 hover:text-white'}`}
+                    >
+                        Español Input
+                    </button>
+                </div>
+
+                <div className="flex-1 relative group">
+                    <div className="absolute inset-0 bg-indigo-500/5 rounded-xl blur-xl group-hover:bg-indigo-500/10 transition-colors duration-500"></div>
                     <textarea
                         value={text}
                         onChange={(e) => setText(e.target.value)}
-                        placeholder={language === 'es' ? "Pegue su manuscrito aquí..." : "Paste your raw text here or upload a file..."}
-                        className="w-full bg-white border border-slate-200 rounded-xl p-6 text-slate-700 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none font-mono text-sm leading-relaxed min-h-[400px] shadow-sm"
+                        placeholder={language === 'es' ? "Pegue su manuscrito aquí..." : "// Paste raw text data or upload document..."}
+                        className="relative z-10 w-full h-full bg-slate-900 border border-slate-800 rounded-xl p-6 text-slate-300 placeholder:text-slate-600 focus:outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/50 resize-none font-mono text-sm leading-relaxed shadow-inner"
+                        spellCheck={false}
                     />
-                    <div className="absolute bottom-4 right-4 flex gap-2">
-                        <label className="cursor-pointer bg-slate-100 hover:bg-slate-200 text-slate-600 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors flex items-center gap-2 shadow-sm border border-slate-200">
-                            <input
-                                type="file"
-                                className="hidden"
-                                accept=".txt,.md,.json"
-                                onChange={(e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                        const reader = new FileReader();
-                                        reader.onload = (e) => setText(e.target?.result as string);
-                                        reader.readAsText(file);
-                                    }
-                                }}
-                            />
-                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" x2="12" y1="3" y2="15" /></svg>
-                            Upload Doc
-                        </label>
-                    </div>
+
+                    <label className="absolute bottom-6 right-6 z-20 cursor-pointer bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-mono font-medium transition-colors flex items-center gap-2 border border-slate-700 shadow-lg">
+                        <input
+                            type="file"
+                            className="hidden"
+                            accept=".txt,.md,.json"
+                            onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                    const reader = new FileReader();
+                                    reader.onload = (e) => setText(e.target?.result as string);
+                                    reader.readAsText(file);
+                                }
+                            }}
+                        />
+                        <FileText className="w-3 h-3" />
+                        LOAD_FILE
+                    </label>
                 </div>
 
-                <button
-                    onClick={handleAnalyze}
-                    disabled={isAnalyzing || !text.trim()}
-                    className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-100 disabled:text-slate-400 rounded-xl font-medium transition-all flex items-center justify-center gap-2 group cursor-pointer shadow-lg shadow-indigo-500/20 disabled:shadow-none"
-                >
-                    {isAnalyzing ? (
-                        <span className="flex items-center gap-2 animate-pulse text-white">
-                            <Sparkles className="w-5 h-5" /> {language === 'es' ? 'Analizando Estructura...' : 'Analyzing Structure...'}
-                        </span>
-                    ) : (
-                        <span className="text-white flex items-center gap-2">
-                            <Sparkles className="w-5 h-5 group-hover:text-yellow-300 transition-colors" />
-                            {language === 'es' ? 'Analizar y Estructurar Libro' : 'Analyze & Structure Book'}
-                        </span>
-                    )}
-                </button>
+                <div className="pt-6">
+                    <button
+                        onClick={handleAnalyze}
+                        disabled={isAnalyzing || !text.trim()}
+                        className="w-full py-5 bg-white text-slate-950 hover:bg-indigo-50 disabled:bg-slate-800 disabled:text-slate-600 rounded-xl font-bold text-lg transition-all flex items-center justify-center gap-3 disabled:cursor-not-allowed shadow-[0_0_20px_rgba(255,255,255,0.1)] hover:shadow-[0_0_30px_rgba(255,255,255,0.2)]"
+                    >
+                        {isAnalyzing ? (
+                            <>
+                                <Sparkles className="w-5 h-5 animate-spin text-indigo-600" />
+                                <span>PROCESSING_DATA...</span>
+                            </>
+                        ) : (
+                            <>
+                                <Sparkles className="w-5 h-5 text-indigo-600" />
+                                <span>INITIALIZE ARCHITECT</span>
+                            </>
+                        )}
+                    </button>
+                </div>
             </div>
 
-            {/* Preview / Results Section */}
-            <div className="bg-white border border-slate-200 rounded-xl p-8 flex flex-col h-full shadow-sm">
-                {book.chapters && book.chapters.length > 0 ? (
-                    <div className="flex flex-col h-full animate-in fade-in slide-in-from-bottom-4 duration-700">
-                        <div className="mb-6 pb-6 border-b border-slate-100">
-                            <h3 className="text-xl font-serif text-slate-900 mb-2">{book.title}</h3>
-                            <p className="text-slate-500 text-sm line-clamp-2">{book.description}</p>
-                        </div>
+            {/* RIGHT PANEL: The Paper Preview (White Mode) */}
+            <div className="bg-slate-100 p-8 lg:p-12 flex flex-col items-center justify-center relative overflow-hidden">
+                <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pointer-events-none"></div>
 
-                        <div className="flex-1 overflow-y-auto pr-2 space-y-4">
-                            <div className="flex-1 overflow-y-auto pr-2 space-y-4 custom-scrollbar">
+                {book.chapters && book.chapters.length > 0 ? (
+                    <div className="w-full max-w-xl h-full animate-in fade-in slide-in-from-bottom-8 duration-700 flex flex-col">
+
+                        {/* Paper Sheet */}
+                        <div className="bg-white flex-1 rounded-sm shadow-2xl p-8 md:p-12 overflow-y-auto custom-scrollbar border border-slate-200/50">
+                            <div className="mb-12 text-center border-b-2 border-slate-950 pb-8">
+                                <h3 className="text-4xl font-serif font-bold text-slate-900 mb-4 leading-tight">{book.title}</h3>
+                                <p className="text-lg font-serif italic text-slate-500">{book.description}</p>
+                            </div>
+
+                            <div className="space-y-8">
                                 {book.chapters.map((chapter, idx) => {
                                     const label = getChapterLabel(idx, chapter.title);
                                     return (
                                         <motion.div
-                                            initial={{ opacity: 0, x: 20 }}
-                                            animate={{ opacity: 1, x: 0 }}
+                                            initial={{ opacity: 0, y: 10 }}
+                                            animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: idx * 0.1 }}
                                             key={chapter.id}
-                                            className="bg-slate-50 p-4 rounded-lg border border-slate-100 hover:border-indigo-500/30 transition-colors cursor-default group"
+                                            className="group cursor-default"
                                         >
-                                            <div className="flex items-center justify-between mb-2">
-                                                <span className="text-xs font-bold text-indigo-600 uppercase tracking-wider">
-                                                    {label}
-                                                </span>
+                                            <div className="flex items-baseline gap-4 mb-2">
+                                                {label && (
+                                                    <span className="text-xs font-bold text-slate-400 uppercase tracking-widest min-w-[80px]">
+                                                        {label}
+                                                    </span>
+                                                )}
+                                                <h4 className="text-xl font-serif font-bold text-slate-800 group-hover:text-indigo-700 transition-colors">
+                                                    {chapter.title}
+                                                </h4>
                                             </div>
-                                            <h4 className="text-lg font-medium text-slate-800 mb-1 group-hover:text-indigo-600 transition-colors">{chapter.title}</h4>
-                                            <p className="text-slate-600 text-sm opacity-80">{chapter.summary}</p>
+                                            <p className="pl-[96px] text-slate-600 font-serif leading-relaxed text-sm opacity-80 border-l border-transparent group-hover:border-indigo-200 group-hover:pl-4 transition-all">
+                                                {chapter.summary}
+                                            </p>
                                         </motion.div>
                                     );
                                 })}
                             </div>
                         </div>
 
-                        <div className="mt-6 pt-6 border-t border-slate-100">
+                        <div className="mt-8">
                             <button
                                 onClick={onNext}
-                                className="w-full py-4 bg-white hover:bg-slate-50 text-slate-700 rounded-xl font-medium transition-all flex items-center justify-center gap-2 group border border-slate-200 hover:border-slate-300"
+                                className="w-full py-4 bg-slate-900 text-white hover:bg-indigo-600 rounded-xl font-medium transition-all flex items-center justify-center gap-3 shadow-xl hover:shadow-2xl shadow-slate-900/20 group"
                             >
-                                Proceed to Visual Studio
-                                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                                <span>Approve Structure & Continue</span>
+                                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                             </button>
                         </div>
                     </div>
                 ) : (
-                    <div className="flex-1 flex flex-col items-center justify-center text-slate-400 gap-4">
-                        <div className="w-16 h-16 rounded-full bg-slate-50 flex items-center justify-center">
-                            <Sparkles className="w-8 h-8 text-slate-300" />
+                    <div className="text-center opacity-40 max-w-sm">
+                        <div className="w-32 h-48 border-2 border-dashed border-slate-400 mx-auto mb-6 rounded flex items-center justify-center bg-white shadow-sm">
+                            <span className="text-6xl font-serif text-slate-200">Aa</span>
                         </div>
-                        <p className="text-center max-w-xs">
-                            AI Architect is waiting for input.<br />Paste your manuscript to begin.
+                        <h3 className="text-2xl font-serif font-bold text-slate-800 mb-2">Paper Preview</h3>
+                        <p className="font-serif text-slate-600 italic">
+                            waiting for manuscript input...
                         </p>
                     </div>
                 )}

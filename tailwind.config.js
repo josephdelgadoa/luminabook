@@ -8,15 +8,19 @@ export default {
     extend: {
       colors: {
         slate: {
-            900: '#0f172a', // "Deep slates"
+          900: '#0f172a', // "Deep slates"
         },
         indigo: {
-            600: '#4f46e6', // "Indigo accents"
+          600: '#4f46e6', // "Indigo accents"
         }
       },
       fontFamily: {
-        serif: ['"Playfair Display"', 'serif'],
+        serif: ['"Merriweather"', 'serif'],
         sans: ['"Inter"', 'sans-serif'],
+        crimson: ['"Crimson Pro"', 'serif'],
+        lora: ['"Lora"', 'serif'],
+        playfair: ['"Playfair Display"', 'serif'],
+        libre: ['"Libre Baskerville"', 'serif'],
       }
     },
   },

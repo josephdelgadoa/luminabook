@@ -31,13 +31,21 @@ const THEMES: BookTheme[] = [
     {
         id: 'bold',
         name: 'Editorial Bold',
-        fontHeading: '"Playfair Display", serif',
-        fontBody: '"Playfair Display", serif',
+        fontHeading: '"Merriweather", serif',
+        fontBody: '"Merriweather", serif',
         primaryColor: '#be123c',
         backgroundColor: '#fff1f2',
         textColor: '#4c0519'
     }
 ];
+
+// Skeleton Component
+const ImageSkeleton = () => (
+    <div className="w-full h-full bg-slate-800 animate-pulse flex items-center justify-center rounded-lg border border-slate-700 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-slate-700/50 to-transparent -translate-x-full animate-[shimmer_1.5s_infinite]" />
+        <Sparkles className="w-6 h-6 text-slate-600 animate-pulse" />
+    </div>
+);
 
 export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => {
     const [activeTab, setActiveTab] = useState<'theme' | 'images'>('theme');
@@ -103,7 +111,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     )}
                     <div className="flex-1 flex flex-col items-center justify-center p-12 text-center z-10 relative">
                         <h1
-                            className="text-5xl md:text-6xl font-bold mb-6 leading-tight drop-shadow-2xl"
+                            className="text-lg md:text-xl font-bold mb-4 leading-tight drop-shadow-2xl"
                             style={{
                                 fontFamily: currentTheme.fontHeading,
                                 color: book.coverImageUrl ? '#fff' : currentTheme.primaryColor
@@ -245,54 +253,78 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 <div className="bg-slate-900 rounded-xl p-4 border border-slate-700">
                                     <div className="flex items-center justify-between mb-3">
                                         <span className="text-sm font-medium text-white">Front Cover</span>
-                                        {book.coverImageUrl && <span className="text-xs text-green-400 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Ready</span>}
+                                        {book.coverImageUrl && !isGenerating && <span className="text-xs text-green-400 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Ready</span>}
                                     </div>
-                                    <button
-                                        onClick={() => handleGenerateImage('cover', 'cover')}
-                                        disabled={!!isGenerating}
-                                        className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-bold text-white uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        {isGenerating === 'cover' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                        {book.coverImageUrl ? 'Regenerate Cover' : 'Generate Cover'}
-                                    </button>
+
+                                    {isGenerating === 'cover' ? (
+                                        <div className="h-48 mb-3 rounded-lg overflow-hidden">
+                                            <ImageSkeleton />
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleGenerateImage('cover', 'cover')}
+                                            className="w-full py-3 bg-indigo-600 hover:bg-indigo-500 rounded-lg text-xs font-bold text-white uppercase tracking-wider transition-colors flex items-center justify-center gap-2 group"
+                                        >
+                                            <Sparkles className="w-3 h-3 group-hover:text-yellow-300" />
+                                            {book.coverImageUrl ? 'Regenerate Cover' : 'Generate Cover'}
+                                        </button>
+                                    )}
                                 </div>
 
                                 {/* Back Cover */}
                                 <div className="bg-slate-900 rounded-xl p-4 border border-slate-700">
                                     <div className="flex items-center justify-between mb-3">
                                         <span className="text-sm font-medium text-white">Back Cover</span>
-                                        {book.backCoverImageUrl && <span className="text-xs text-green-400 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Ready</span>}
+                                        {book.backCoverImageUrl && !isGenerating && <span className="text-xs text-green-400 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Ready</span>}
                                     </div>
-                                    <button
-                                        onClick={() => handleGenerateImage('back', 'back')}
-                                        disabled={!!isGenerating}
-                                        className="w-full py-2 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-white uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
-                                    >
-                                        {isGenerating === 'back' ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                        {book.backCoverImageUrl ? 'Regenerate Back' : 'Generate Back'}
-                                    </button>
+
+                                    {isGenerating === 'back' ? (
+                                        <div className="h-48 mb-3 rounded-lg overflow-hidden">
+                                            <ImageSkeleton />
+                                        </div>
+                                    ) : (
+                                        <button
+                                            onClick={() => handleGenerateImage('back', 'back')}
+                                            className="w-full py-3 bg-slate-700 hover:bg-slate-600 rounded-lg text-xs font-bold text-white uppercase tracking-wider transition-colors flex items-center justify-center gap-2"
+                                        >
+                                            <RefreshCw className="w-3 h-3" />
+                                            {book.backCoverImageUrl ? 'Regenerate Back' : 'Generate Back'}
+                                        </button>
+                                    )}
                                 </div>
 
-                                {/* Chapters */}
-                                <div className="space-y-2">
-                                    <span className="text-xs text-slate-500 font-medium block mt-6 mb-2">CHAPTER ILLUSTRATIONS</span>
-                                    {book.chapters?.map((chapter, i) => (
-                                        <div key={chapter.id} className="flex items-center justify-between p-3 bg-slate-900 border border-slate-800 rounded-lg group hover:border-slate-600 transition-colors">
-                                            <div className="flex items-center gap-3 overflow-hidden">
-                                                <div className={`w-8 h-8 rounded bg-slate-800 flex items-center justify-center shrink-0 ${chapter.imageUrl ? 'border border-green-500/50' : ''}`}>
-                                                    {chapter.imageUrl ? <img src={chapter.imageUrl} className="w-full h-full object-cover rounded" /> : <span className="text-xs text-slate-500">{i + 1}</span>}
+                                {/* Chapters Grid - Masonry-ish feel */}
+                                <div>
+                                    <span className="text-xs text-slate-500 font-medium block mt-6 mb-4 uppercase tracking-wider">Chapter Illustrations</span>
+                                    <div className="grid grid-cols-2 gap-3">
+                                        {book.chapters?.map((chapter, i) => (
+                                            <div key={chapter.id} className="relative group rounded-lg overflow-hidden border border-slate-800 bg-slate-900">
+                                                <div className="aspect-square bg-slate-800">
+                                                    {isGenerating === chapter.id ? (
+                                                        <ImageSkeleton />
+                                                    ) : chapter.imageUrl ? (
+                                                        <img src={chapter.imageUrl} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt={chapter.title} />
+                                                    ) : (
+                                                        <div className="w-full h-full flex items-center justify-center text-slate-700">
+                                                            <ImageIcon className="w-8 h-8" />
+                                                        </div>
+                                                    )}
                                                 </div>
-                                                <span className="text-sm text-slate-300 truncate">{chapter.title}</span>
+
+                                                <button
+                                                    onClick={() => handleGenerateImage(chapter.id, 'chapter')}
+                                                    disabled={!!isGenerating}
+                                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all z-10"
+                                                >
+                                                    <Sparkles className="w-5 h-5 text-white drop-shadow-lg" />
+                                                </button>
+
+                                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
+                                                    <span className="text-[10px] text-white font-medium truncate block">{i + 1}. {chapter.title}</span>
+                                                </div>
                                             </div>
-                                            <button
-                                                onClick={() => handleGenerateImage(chapter.id, 'chapter')}
-                                                disabled={!!isGenerating}
-                                                className="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded transition-colors"
-                                            >
-                                                {isGenerating === chapter.id ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Sparkles className="w-3 h-3" />}
-                                            </button>
-                                        </div>
-                                    ))}
+                                        ))}
+                                    </div>
                                 </div>
                             </div>
                         )}
