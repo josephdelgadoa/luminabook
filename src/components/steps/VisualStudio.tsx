@@ -105,15 +105,32 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         </div>
                     )}
 
-                    {/* Overlay Text Preview */}
-                    <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black/80 flex flex-col justify-between p-8">
-                        <h1 className={`font-serif font-bold text-center drop-shadow-lg ${isCover ? 'text-4xl mt-10' : 'text-2xl mt-auto mb-4'}`}>
-                            {activeTitle}
-                        </h1>
-                        {isCover && (
-                            <p className="text-center text-sm tracking-[0.3em] uppercase opacity-90 drop-shadow-md">
-                                {book.author || "Author Name"}
-                            </p>
+                    {/* Overlay Text Preview (Cinematic "Surprise" Layout) */}
+                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none p-6 lg:p-12">
+
+                        {/* Top Gradient & Title */}
+                        <div className="w-full bg-gradient-to-b from-black/80 via-black/40 to-transparent pt-8 pb-12 px-4 rounded-t-lg">
+                            <h1 className={`font-serif font-bold text-center drop-shadow-2xl text-white ${isCover ? 'text-4xl lg:text-5xl tracking-tight leading-tight' : 'text-2xl'}`}>
+                                {activeTitle}
+                            </h1>
+
+                            {/* Author Name - SURPRISE: Elegant, Gold-tinted, Spaced Out */}
+                            {isCover && (
+                                <div className="mt-4 flex flex-col items-center">
+                                    <div className="h-px w-24 bg-amber-500/50 mb-3 blur-[1px]" />
+                                    <p className="text-center font-sans font-light text-amber-100/90 text-sm lg:text-base tracking-[0.3em] uppercase drop-shadow-md">
+                                        {book.author || "Joseph Delgado"}
+                                    </p>
+                                    <div className="h-px w-24 bg-amber-500/50 mt-3 blur-[1px]" />
+                                </div>
+                            )}
+                        </div>
+
+                        {/* Bottom Gradient for Contrast if Chapter */}
+                        {!isCover && currentChapter && (
+                            <div className="bg-gradient-to-t from-black/90 to-transparent p-6 rounded-b-lg">
+                                <p className="text-white/80 text-center text-sm italic">{currentChapter.title}</p>
+                            </div>
                         )}
                     </div>
                 </motion.div>
@@ -154,7 +171,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         <div className="p-6 border-b border-white/10 flex items-center justify-between">
                             <div>
                                 <h2 className="text-sm font-bold uppercase tracking-widest text-white/90">Art Director</h2>
-                                <p className="text-[10px] text-white/50 mt-1">Flux 1.1 Pro Enabled</p>
+                                <p className="text-[10px] text-white/50 mt-1">Pollinations (Flux) Engine</p>
                             </div>
                             <Wand2 className="text-amber-400 w-5 h-5" />
                         </div>
