@@ -122,26 +122,23 @@ export const generateImage = async (prompt: string, _width: number = 1024, _heig
 
     } catch (e: any) {
         console.error("Flux 1.1 Pro Generation Failed:", e);
-
-        // Fallback to Schnell if Pro fails (e.g. permissions/cost)
-        // This is the "Speed" option recommended by user
+        // Fallback to Free Schnell if Pro fails (using the free ID as per user suggestion)
         try {
-            console.log("Falling back to Flux 1 Schnell...", e.message);
+            console.log("Falling back to Flux 1 Schnell (Free)...");
             const client = getClient();
             const response = await client.chat.completions.create({
-                model: "black-forest-labs/flux-1-schnell",
+                model: "black-forest-labs/flux-1-schnell-free", // Use the free ID
                 messages: [{ role: "user", content: prompt }]
             });
             const content = response.choices[0].message.content || "";
             const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
             let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : null;
             if (url && url.includes('](')) url = url.split('](')[1].replace(')', '');
-
             if (url) return url;
-        } catch (fallbackError) {
-            console.error("Fallback Failed:", fallbackError);
+        } catch (fbError) {
+            console.error("Free Fallback Failed:", fbError);
         }
 
-        throw new Error(`Generation Failed: ${e.message || "Unknown Error"}`);
+        throw new Error(`Generation & Fallback Failed: ${e.message || "Unknown Error"}`);
     }
 };
