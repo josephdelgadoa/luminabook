@@ -156,9 +156,26 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
 
                                     {/* Manuscript Paper Content */}
                                     <div className="p-12 lg:p-16">
-                                        <h2 className="font-serif text-3xl font-bold text-slate-900 mb-8 pb-4 border-b border-slate-900/10">
-                                            {chapter.title}
-                                        </h2>
+                                        {(() => {
+                                            // Smart Title Logic
+                                            const isIntro = (t: string) => /intro|prologue|prólogo|preface|prefacio/i.test(t);
+                                            const isChapterLabeled = (t: string) => /chapter|capítulo|part|parte/i.test(t);
+
+                                            let displayTitle = chapter.title;
+
+                                            if (!isIntro(chapter.title) && !isChapterLabeled(chapter.title)) {
+                                                // Count previous non-intro chapters
+                                                const prevChapters = book.chapters?.slice(0, index).filter(c => !isIntro(c.title)).length || 0;
+                                                const chapterNum = prevChapters + 1;
+                                                displayTitle = `Chapter ${chapterNum}: ${chapter.title}`;
+                                            }
+
+                                            return (
+                                                <h2 className="font-serif text-3xl font-bold text-slate-900 mb-8 pb-4 border-b border-slate-900/10">
+                                                    {displayTitle}
+                                                </h2>
+                                            );
+                                        })()}
 
                                         <div className="text-slate-700 leading-loose font-serif text-lg space-y-6 max-w-none text-justify">
                                             {chapter.content?.split('\n').map((para, i) => (
