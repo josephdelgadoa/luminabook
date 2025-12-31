@@ -149,19 +149,15 @@ const stringToColor = (str: string) => {
     return "00000".substring(0, 6 - c.length) + c;
 };
 
-export const generateImage = async (prompt: string): Promise<string> => {
-    // Generate a unique, deterministic placeholder based on the prompt
-    // This ensures different chapters get different colored/styled placeholders
-    const bgColor = stringToColor(prompt);
+// Helper to generate a random seed
+const generateSeed = () => Math.floor(Math.random() * 1000000);
 
-    // Invert for text color (simple logic)
-    const r = parseInt(bgColor.substr(0, 2), 16);
-    const g = parseInt(bgColor.substr(2, 2), 16);
-    const b = parseInt(bgColor.substr(4, 2), 16);
-    const yiq = ((r * 299) + (g * 587) + (b * 114)) / 1000;
-    const textColor = (yiq >= 128) ? '000000' : 'ffffff';
+export const generateImage = async (prompt: string, width: number = 1024, height: number = 1024): Promise<string> => {
+    // We use Pollinations.ai for real generative images
+    // Append a random seed to ensure regeneration works
+    const seed = generateSeed();
+    const encodedPrompt = encodeURIComponent(prompt.substring(0, 500)); // Limit prompt length safely
 
-    const encodedText = encodeURIComponent(prompt.substring(0, 20) + (prompt.length > 20 ? "..." : ""));
-
-    return `https://placehold.co/1024x1024/${bgColor}/${textColor}?text=${encodedText}`;
+    // Pollinations URL format: https://image.pollinations.ai/prompt/{prompt}?width={width}&height={height}&seed={seed}&nologo=true
+    return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
 };

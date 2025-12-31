@@ -68,14 +68,16 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                 const smartPrompt = book.coverImagePrompt && book.coverImagePrompt.length > 20 ? book.coverImagePrompt : "";
                 prompt = smartPrompt || `Book cover for "${book.title}", ${book.theme?.name} style. Minimalist, premium, cinematic lighting.`;
 
-                const url = await generateImage(prompt);
+                // Cover: Portrait (2:3 approx), e.g., 800x1200
+                const url = await generateImage(prompt, 800, 1200);
                 setBook({ ...book, coverImageUrl: url, coverImagePrompt: prompt });
             } else if (type === 'back') {
                 // Use AI-generated smart prompt if available
                 const smartPrompt = book.backCoverImagePrompt && book.backCoverImagePrompt.length > 20 ? book.backCoverImagePrompt : "";
                 prompt = smartPrompt || `Back book cover for "${book.title}", ${book.theme?.name} style. Matching front cover aesthetic, clean layout for blurb.`;
 
-                const url = await generateImage(prompt);
+                // Back Cover: Portrait
+                const url = await generateImage(prompt, 800, 1200);
                 setBook({ ...book, backCoverImageUrl: url, backCoverImagePrompt: prompt });
             } else {
                 // Target is chapter ID
@@ -84,7 +86,8 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     const smartPrompt = chapter.imagePrompt && chapter.imagePrompt.length > 20 ? chapter.imagePrompt : "";
                     prompt = smartPrompt || `Chapter illustration for "${chapter.title}": ${chapter.summary}. ${book.theme?.name} style, artistic, evocative.`;
 
-                    const url = await generateImage(prompt);
+                    // Chapter: Ultra-Wide (16:3), e.g., 1600x300
+                    const url = await generateImage(prompt, 1600, 300);
 
                     const updatedChapters = book.chapters?.map(c =>
                         c.id === target ? { ...c, imageUrl: url, imagePrompt: prompt } : c
