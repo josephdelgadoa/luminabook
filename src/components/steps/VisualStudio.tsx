@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { EBook, BookTheme } from '@/types';
 import { generateImage } from '@/services/ai-service';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Type, Image as ImageIcon, Sparkles, RefreshCw, Smartphone, Monitor, ChevronLeft, ChevronRight, LayoutTemplate } from 'lucide-react';
+import { Type, Image as ImageIcon, Sparkles, RefreshCw, Smartphone, Monitor, ChevronLeft, ChevronRight, LayoutTemplate, AlertCircle } from 'lucide-react';
 
 interface VisualStudioProps {
     book: Partial<EBook>;
@@ -50,6 +50,7 @@ const ImageSkeleton = () => (
 export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => {
     const [activeTab, setActiveTab] = useState<'theme' | 'images'>('theme');
     const [isGenerating, setIsGenerating] = useState<string | null>(null); // 'cover', 'back', or chapterId
+    const [errorMsg, setErrorMsg] = useState<string | null>(null);
     const [previewMode, setPreviewMode] = useState<'desktop' | 'mobile'>('desktop');
     const [currentPage, setCurrentPage] = useState(0); // 0 = Cover, 1...N = Chapters, N+1 = Back Cover
 
@@ -59,44 +60,44 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
         setBook({ ...book, theme });
     };
 
-    const handleGenerateImage = async (target: 'cover' | 'back' | string, type: 'cover' | 'back' | 'chapter') => {
+    const handleGenerateImage = async (target: 'cover' | 'back' | string, type: 'cover' | 'back' | 'chapter', customPrompt?: string) => {
         setIsGenerating(target);
+        setErrorMsg(null);
+
         try {
-            let prompt = "";
+            let prompt = customPrompt || "";
+            let generatedUrl = "";
+
             if (type === 'cover') {
-                // Use AI-generated smart prompt if available, otherwise fallback to template
-                const smartPrompt = book.coverImagePrompt && book.coverImagePrompt.length > 20 ? book.coverImagePrompt : "";
-                prompt = smartPrompt || `Book cover for "${book.title}", ${book.theme?.name} style. Minimalist, premium, cinematic lighting.`;
-
-                // Cover: Portrait (2:3 approx), e.g., 800x1200
-                const url = await generateImage(prompt, 800, 1200);
-                setBook({ ...book, coverImageUrl: url, coverImagePrompt: prompt });
-            } else if (type === 'back') {
-                // Use AI-generated smart prompt if available
-                const smartPrompt = book.backCoverImagePrompt && book.backCoverImagePrompt.length > 20 ? book.backCoverImagePrompt : "";
-                prompt = smartPrompt || `Back book cover for "${book.title}", ${book.theme?.name} style. Matching front cover aesthetic, clean layout for blurb.`;
-
-                // Back Cover: Portrait
-                const url = await generateImage(prompt, 800, 1200);
-                setBook({ ...book, backCoverImageUrl: url, backCoverImagePrompt: prompt });
-            } else {
-                // Target is chapter ID
-                const chapter = book.chapters?.find(c => c.id === target);
-                if (chapter) {
-                    const smartPrompt = chapter.imagePrompt && chapter.imagePrompt.length > 20 ? chapter.imagePrompt : "";
-                    prompt = smartPrompt || `Chapter illustration for "${chapter.title}": ${chapter.summary}. ${book.theme?.name} style, artistic, evocative.`;
-
-                    // Chapter: Ultra-Wide (16:3), e.g., 1600x300
-                    const url = await generateImage(prompt, 1600, 300);
-
-                    const updatedChapters = book.chapters?.map(c =>
-                        c.id === target ? { ...c, imageUrl: url, imagePrompt: prompt } : c
-                    );
-                    setBook({ ...book, chapters: updatedChapters });
-                }
+                prompt = prompt || book.coverImagePrompt || `Book cover for "${book.title}", ${book.theme?.name} style. Minimalist, premium.`;
+                generatedUrl = await generateImage(prompt, 800, 1200);
+                setBook({ ...book, coverImageUrl: generatedUrl, coverImagePrompt: prompt });
             }
-        } catch (e) {
-            console.error(e);
+            else if (type === 'back') {
+                prompt = prompt || book.backCoverImagePrompt || `Back cover for "${book.title}", ${book.theme?.name} style.`;
+                generatedUrl = await generateImage(prompt, 800, 1200);
+                setBook({ ...book, backCoverImageUrl: generatedUrl, backCoverImagePrompt: prompt });
+            }
+            else {
+                // Chapter Generation
+                const chapter = book.chapters?.find(c => c.id === target);
+                if (!chapter) throw new Error("Chapter not found");
+
+                prompt = prompt || chapter.imagePrompt || `Illustration for ${chapter.title}`;
+                generatedUrl = await generateImage(prompt, 1600, 800); // Cinematic 2:1 Ratio
+
+                const updatedChapters = book.chapters?.map(c =>
+                    c.id === target ? { ...c, imageUrl: generatedUrl, imagePrompt: prompt } : c
+                );
+                setBook({ ...book, chapters: updatedChapters });
+            }
+
+        } catch (e: any) {
+            console.error("Visual Studio Generation Error:", e);
+            setErrorMsg(`Generation failed: ${e.message || "Unknown error"}`);
+
+            // Clear error after 5 seconds automatically
+            setTimeout(() => setErrorMsg(null), 5000);
         } finally {
             setIsGenerating(null);
         }
@@ -111,7 +112,6 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     // Render content based on currentPage
     const renderPageContent = () => {
         if (currentPage === 0) {
-            // FRONT COVER
             // FRONT COVER - PROFESSIONAL REDESIGN
             return (
                 <div className="h-full flex flex-col relative overflow-hidden">
@@ -285,7 +285,16 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
 
             {/* LEFT: Tools Panel */}
             <div className="lg:col-span-4 flex flex-col gap-6">
-                <div className="bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex-1 shadow-2xl">
+                <div className="bg-slate-800/90 backdrop-blur-sm rounded-2xl p-6 border border-slate-700/50 flex-1 shadow-2xl relative overflow-hidden">
+
+                    {/* Error Toast */}
+                    {errorMsg && (
+                        <div className="absolute top-0 left-0 right-0 bg-red-500 text-white p-3 text-xs font-bold flex items-center gap-2 z-50 animate-slide-down">
+                            <AlertCircle className="w-4 h-4" />
+                            {errorMsg}
+                        </div>
+                    )}
+
                     <div className="flex items-center gap-4 mb-6 pb-4 border-b border-slate-700/50">
                         <button
                             onClick={() => setActiveTab('theme')}
@@ -524,4 +533,3 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
         </div>
     );
 };
-
