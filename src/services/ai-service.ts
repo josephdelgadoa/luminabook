@@ -38,8 +38,10 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
         Return a valid JSON object with: 
         - title (string)
         - description (string)
-        - coverPrompt (string)
+        - coverPrompt (string): A detailed, artistic text-to-image prompt (Midjourney style). Describe lighting, mood, artistic style (e.g. 'oil painting', 'cinematic', 'vector'), and composition.
         - chapters (array of objects with id, title, content, summary, imagePrompt)
+        
+        For 'imagePrompt' in chapters: Generate a specific, highly visual description of a key scene or theme in the chapter. Style should match the book's tone.
 
         Ensure proper paragraph separation with \\n\\n. 
         Return ONLY raw JSON. No markdown backticks.

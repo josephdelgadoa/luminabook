@@ -64,18 +64,26 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
         try {
             let prompt = "";
             if (type === 'cover') {
-                prompt = `Book cover for "${book.title}", ${book.theme?.name} style. Minimalist, premium, cinematic lighting.`;
+                // Use AI-generated smart prompt if available, otherwise fallback to template
+                const smartPrompt = book.coverImagePrompt && book.coverImagePrompt.length > 20 ? book.coverImagePrompt : "";
+                prompt = smartPrompt || `Book cover for "${book.title}", ${book.theme?.name} style. Minimalist, premium, cinematic lighting.`;
+
                 const url = await generateImage(prompt);
                 setBook({ ...book, coverImageUrl: url, coverImagePrompt: prompt });
             } else if (type === 'back') {
-                prompt = `Back book cover for "${book.title}", ${book.theme?.name} style. Matching front cover aesthetic, clean layout for blurb.`;
+                // Use AI-generated smart prompt if available
+                const smartPrompt = book.backCoverImagePrompt && book.backCoverImagePrompt.length > 20 ? book.backCoverImagePrompt : "";
+                prompt = smartPrompt || `Back book cover for "${book.title}", ${book.theme?.name} style. Matching front cover aesthetic, clean layout for blurb.`;
+
                 const url = await generateImage(prompt);
                 setBook({ ...book, backCoverImageUrl: url, backCoverImagePrompt: prompt });
             } else {
                 // Target is chapter ID
                 const chapter = book.chapters?.find(c => c.id === target);
                 if (chapter) {
-                    prompt = `Chapter illustration for "${chapter.title}": ${chapter.summary}. ${book.theme?.name} style, artistic, evocative.`;
+                    const smartPrompt = chapter.imagePrompt && chapter.imagePrompt.length > 20 ? chapter.imagePrompt : "";
+                    prompt = smartPrompt || `Chapter illustration for "${chapter.title}": ${chapter.summary}. ${book.theme?.name} style, artistic, evocative.`;
+
                     const url = await generateImage(prompt);
 
                     const updatedChapters = book.chapters?.map(c =>
