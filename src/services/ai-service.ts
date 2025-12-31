@@ -162,42 +162,22 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
 };
 
 export const generateImage = async (prompt: string, width: number = 1024, height: number = 1024): Promise<string> => {
+    // Primary: Pollinations.ai (Free, Fast, Reliable)
+    // We switched to this because OpenRouter was returning 400/405 errors for Flux models via API.
     try {
-        const client = getClient();
-        console.log("Generating image via OpenRouter (Chat Endpoint)...", { model: "black-forest-labs/flux-1-schnell" });
+        console.log("Generating image via Pollinations.ai...");
+        const seed = Math.floor(Math.random() * 1000000);
+        // Add specific style modifiers for better results
+        const enhancedPrompt = `${prompt} . highly detailed, cinematic lighting, 8k resolution, photorealistic, masterpiece`;
+        const encodedPrompt = encodeURIComponent(enhancedPrompt.substring(0, 800)); // Limit length
 
-        // OpenRouter uses the Chat API for images
-        const completion = await client.chat.completions.create({
-            model: "black-forest-labs/flux-1-schnell",
-            messages: [
-                { role: "user", content: prompt }
-            ],
-        });
-
-        const content = completion.choices[0]?.message?.content || "";
-
-        // Robust URL extraction
-        // Regex to find http/https links
-        const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
-        let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : content;
-
-        // Cleanup if markdown link
-        if (url.includes('](')) {
-            url = url.split('](')[1].replace(')', '');
-        }
-
-        if (!url || !url.startsWith('http')) {
-            console.log("Raw content returned:", content);
-            throw new Error("No valid image URL found in chat response");
-        }
+        // URL Construction with Seed for consistency + regeneration capability
+        const url = `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
 
         return url;
     } catch (e) {
-        console.error("Image Generation Failed:", e);
-        // Fallback to Pollinations if OpenRouter fails (e.g. model not supported/credits issue)
-        console.log("Falling back to Pollinations...");
-        const seed = Math.floor(Math.random() * 1000000);
-        const encodedPrompt = encodeURIComponent(prompt.substring(0, 500));
-        return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
+        console.error("Pollinations Generation Failed:", e);
+        // Emergency Fallback: Placeholders
+        return `https://placehold.co/${width}x${height}/1e293b/ffffff?text=Image+Generation+Failed`;
     }
 };
