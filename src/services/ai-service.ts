@@ -79,66 +79,53 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
 };
 
 export const generateImage = async (prompt: string, _width: number = 1024, _height: number = 1024): Promise<string> => {
-    console.log("Generating Image via Flux 1.1 Pro...", { prompt: prompt.substring(0, 50) });
+    // List of models to try in order of preference (Quality -> Speed -> Free)
+    // 1. Flux 1.1 Pro (Best Quality)
+    // 2. Flux 1 Schnell (Standard Paid - Fast)
+    // 3. Flux 1 Schnell Free (Free Tier Fallback)
+    const models = [
+        "black-forest-labs/flux-1.1-pro",
+        "black-forest-labs/flux-1-schnell",
+        "black-forest-labs/flux-1-schnell-free"
+    ];
 
-    try {
-        const client = getClient();
+    console.log("Starting Image Generation waterfall...", { prompt: prompt.substring(0, 50) });
 
-        // User's recommended robust implementation for Flux 1.1 Pro
-        const response = await client.chat.completions.create({
-            model: "black-forest-labs/flux-1.1-pro", // Top Quality Model
-            messages: [
-                {
-                    role: "user",
-                    content: prompt
-                }
-            ],
-            // Note: modalities param might be needed for strict parsing, 
-            // but OpenAI Node SDK types might not strictly support it yet. 
-            // OpenRouter infers image generation from this model ID.
-        });
+    let lastError: any = null;
 
-        const content = response.choices[0].message.content;
-
-        // Flux via OpenRouter/Chat usually returns the URL directly in content 
-        // OR a Markdown link ![image](url)
-        console.log("Flux Response:", content);
-
-        if (!content) throw new Error("No content received from specific model");
-
-        // Extract URL
-        const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
-        let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : null;
-
-        if (url && url.includes('](')) {
-            url = url.split('](')[1].replace(')', '');
-        }
-
-        if (!url || !url.startsWith('http')) {
-            throw new Error("Could not parse Image URL from response: " + content);
-        }
-
-        return url;
-
-    } catch (e: any) {
-        console.error("Flux 1.1 Pro Generation Failed:", e);
-        // Fallback to Free Schnell if Pro fails (using the free ID as per user suggestion)
+    for (const model of models) {
         try {
-            console.log("Falling back to Flux 1 Schnell (Free)...");
+            console.log(`Attempting generation with model: ${model}...`);
             const client = getClient();
+
             const response = await client.chat.completions.create({
-                model: "black-forest-labs/flux-1-schnell-free", // Use the free ID
+                model: model,
                 messages: [{ role: "user", content: prompt }]
             });
+
             const content = response.choices[0].message.content || "";
+            // console.log(`Response from ${model}:`, content); // Debug log
+
+            // Extract URL (Handles both Markdown ![image](url) and raw URL)
             const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
             let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : null;
             if (url && url.includes('](')) url = url.split('](')[1].replace(')', '');
-            if (url) return url;
-        } catch (fbError) {
-            console.error("Free Fallback Failed:", fbError);
-        }
 
-        throw new Error(`Generation & Fallback Failed: ${e.message || "Unknown Error"}`);
+            if (url && url.startsWith('http')) {
+                console.log(`Successfully generated image with ${model}`);
+                return url;
+            }
+
+            // If we got a response but no URL, treat as failure and try next
+            console.warn(`No URL found in response from ${model}`);
+
+        } catch (e: any) {
+            console.warn(`Failed with ${model}:`, e.message || e);
+            lastError = e;
+            // Continue to next model in the list
+        }
     }
+
+    console.error("All image generation attempts failed.");
+    throw new Error(`All models failed. Last error: ${lastError?.message || "Unknown"}`);
 };
