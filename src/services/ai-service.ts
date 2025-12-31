@@ -1,11 +1,10 @@
 import type { EBook } from "../types";
-
-// OpenRouter/OpenAI API Configuration
 import OpenAI from "openai";
 
+// Configuration
 const getApiKey = () => import.meta.env.VITE_OPENROUTER_API_KEY || '';
 
-// Initialize OpenAI client pointing to OpenRouter
+// Initialize OpenAI client for OpenRouter
 const getClient = () => {
     const apiKey = getApiKey();
     if (!apiKey) throw new Error("OpenRouter API Key is missing");
@@ -13,222 +12,136 @@ const getClient = () => {
     return new OpenAI({
         baseURL: "https://openrouter.ai/api/v1",
         apiKey: apiKey,
-        dangerouslyAllowBrowser: true, // Required for client-side usage
+        dangerouslyAllowBrowser: true,
         defaultHeaders: {
-            "HTTP-Referer": "https://luminabook.com", // Site URL for rankings
-            "X-Title": "Luminabook", // App name for rankings
+            "HTTP-Referer": "https://luminabook.com",
+            "X-Title": "Luminabook",
         }
     });
 };
 
 export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'en'): Promise<Partial<EBook>> => {
-    console.log("Analyzing manuscript via OpenRouter (OpenAI SDK)...");
-
+    console.log("Analyzing manuscript via OpenRouter...");
     try {
         const client = getClient();
-
         const languageInstruction = language === 'es'
-            ? "OUTPUT LANGUAGE: SPANISH (Español). ensure all titles, summaries, and descriptions are in Spanish."
+            ? "OUTPUT LANGUAGE: SPANISH (Español)."
             : "OUTPUT LANGUAGE: ENGLISH.";
 
-        const systemPrompt = `
-        You are an Elite Book Designer. Your task is to structure a book based on the user's input.
-        
-        ${languageInstruction}
-
-        INPUT ANALYSIS:
-        1. Check if the input is a full manuscript or a concept/outline.
-        
-        EXECUTION RULES:
-        - If Manuscript: You act as a FORMATTER. You must split the content into logical chapters. 
-          CRITICAL: You MUST PRESERVE the ORIGINAL TEXT of the input in the 'content' field. 
-          Do NOT rewrite, summarize, or translate the content body unless it is a summary. Keep it exactly as is, just organized. 
-        - If Concept/Topic: Creatively generate a comprehensive 10-12 chapter outline expanding on the theme.
-        - STRUCTURE: 
-           - Look for "Introduction", "Prologue", "Introducción", "Prólogo". treat them as distinct sections, NOT "Chapter 1".
-           - The first "Chapter 1" should be the actual start of the story/content after any intro.
-
-        OUTPUT FORMAT:
-        Return a valid JSON object with: 
-        - title (string)
-        - description (string)
-        - coverPrompt (string): A detailed, artistic text-to-image prompt (Midjourney style). Describe lighting, mood, artistic style (e.g. 'oil painting', 'cinematic', 'vector'), and composition.
-        - chapters (array of objects with id, title, content, summary, imagePrompt)
-        
-        For 'imagePrompt' in chapters: Generate a specific, highly visual description of a key scene or theme in the chapter. Style should match the book's tone.
-
-        Ensure proper paragraph separation with \\n\\n. 
-        Return ONLY raw JSON. No markdown backticks.
-        `;
-
         const completion = await client.chat.completions.create({
-            model: "deepseek/deepseek-chat", // Consistent High-Quality Model
+            model: "deepseek/deepseek-chat",
             messages: [
-                { role: "system", content: systemPrompt },
+                {
+                    role: "system",
+                    content: `You are an Elite Book Designer. Structure a book from input. ${languageInstruction}
+                    RETURN JSON ONLY.
+                    Format: {
+                      title: string,
+                      description: string,
+                      coverPrompt: string (Artistic, Midjourney style),
+                      chapters: [{ id: string, title: string, content: string, summary: string, imagePrompt: string }]
+                    }`
+                },
                 { role: "user", content: `INPUT TEXT:\n${text}` }
             ],
-            response_format: { type: "json_object" } // DeepSeek supports JSON mode
+            response_format: { type: "json_object" }
         });
 
-        const content = completion.choices[0].message.content || "";
-        console.log("AI Response received (truncated):", content.substring(0, 100));
+        const content = completion.choices[0].message.content || "{}";
+        const json = JSON.parse(content.replace(/```json/g, '').replace(/```/g, '').trim());
 
-        // Clean markdown if present
-        const cleanJson = content.replace(/```json/g, '').replace(/```/g, '').trim();
-
-        let json;
-        try {
-            json = JSON.parse(cleanJson);
-        } catch (e) {
-            console.error("JSON Parse Error:", e);
-            console.error("Raw Content:", content);
-            throw new Error("Invalid JSON response from AI");
-        }
-
-        // Post-Processing: Ensure structure and defaults
-        const generateId = () => Math.random().toString(36).substring(2, 9);
-
-        // Ensure core fields
+        // Basic Defaults
         if (!json.title) json.title = "Untitled Draft";
-        if (!json.description) json.description = "A manuscript draft processed by Luminabook.";
+        if (!json.chapters) json.chapters = [];
 
-        // Ensure chapters array
-        if (!json.chapters || !Array.isArray(json.chapters)) {
-            json.chapters = [{
-                id: generateId(),
-                title: "Introduction",
-                content: text,
-                summary: "Full text content.",
-                imagePrompt: "Abstract book concept"
-            }];
-        }
-
-        // Processing chapters
-        json.chapters = await Promise.all(json.chapters.map(async (c: any) => {
-            const id = c.id || generateId();
-            const title = c.title || `Chapter ${Math.random().toString().substring(2, 5)}`;
-            const summary = c.summary || `A section covering ${title}.`;
-            const imagePrompt = c.imagePrompt || `Artistic illustration for ${title}`;
-
-            // SKIP Image Generation for chapters during initial analysis to save time/cost.
-            // User can generate them manually via the UI "Generate" button.
-            const imageUrl = "";
-
-            return {
-                ...c,
-                id,
-                title,
-                summary,
-                imagePrompt,
-                imageUrl,
-            };
+        // Generate IDs
+        json.chapters = json.chapters.map((c: any) => ({
+            ...c,
+            id: c.id || Math.random().toString(36).substring(2, 9),
+            imageUrl: ""
         }));
 
-        // Generate cover if missing (We do this one as it defines the book first impression)
-        if (!json.coverImageUrl) {
-            const coverPrompt = json.coverPrompt || `Book cover for ${json.title}`;
+        // Cover Generation (Auto-Start)
+        if (!json.coverImageUrl && json.coverPrompt) {
             try {
-                // Cover: Portrait
-                json.coverImageUrl = await generateImage(coverPrompt, 800, 1200);
-            } catch (imgError) {
-                console.error("Failed to generate cover:", imgError);
-                json.coverImageUrl = ""; // Fallback to empty (will show placeholder/generator)
+                json.coverImageUrl = await generateImage(json.coverPrompt);
+            } catch (e) {
+                console.error("Auto-Cover Failed:", e);
+                json.coverImageUrl = "";
             }
         }
 
         return json;
-
-    } catch (error: any) {
-        console.error("AI Analysis CRITICAL FAILURE:", error);
-
-        // Fail-safe
-        return {
-            title: "Draft Manuscript (Offline Mode)",
-            description: "The AI service was temporarily unavailable.",
-            author: "Author",
-            chapters: [
-                {
-                    id: Math.random().toString(36).substring(2, 9),
-                    title: "Manuscript Content",
-                    content: text,
-                    summary: "Full original text content.",
-                    imagePrompt: "Writing workspace, vintage typewriter",
-                    imageUrl: ""
-                }
-            ],
-            coverImageUrl: ""
-        };
+    } catch (error) {
+        console.error("Analysis Failed:", error);
+        throw error;
     }
 };
 
 export const generateImage = async (prompt: string, width: number = 1024, height: number = 1024): Promise<string> => {
-    // Strategy: Try OpenRouter (Flux) first for high quality/no limits using simple fetch.
-    // Fallback to Pollinations if that fails.
+    console.log("Generating Image via Flux 1.1 Pro...", { prompt: prompt.substring(0, 50) });
 
-    // 1. Try OpenRouter (Flux-Schnell) with fetch to bypass SDK complexity
     try {
-        const apiKey = getApiKey();
-        if (apiKey) {
-            console.log("Generating image via OpenRouter (Flux/Fetch)...", { width, height });
-            // Note: Flux on OpenRouter ignores Width/Height params in chat completion, 
-            // but we pass standard prompt.
+        const client = getClient();
 
-            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "HTTP-Referer": "https://luminabook.com",
-                    "X-Title": "Luminabook",
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({
-                    model: "black-forest-labs/flux-1-schnell",
-                    messages: [
-                        { role: "user", content: prompt }
-                    ]
-                })
+        // User's recommended robust implementation for Flux 1.1 Pro
+        const response = await client.chat.completions.create({
+            model: "black-forest-labs/flux-1.1-pro", // Top Quality Model
+            messages: [
+                {
+                    role: "user",
+                    content: prompt
+                }
+            ],
+            // Note: modalities param might be needed for strict parsing, 
+            // but OpenAI Node SDK types might not strictly support it yet. 
+            // OpenRouter infers image generation from this model ID.
+        });
+
+        const content = response.choices[0].message.content;
+
+        // Flux via OpenRouter/Chat usually returns the URL directly in content 
+        // OR a Markdown link ![image](url)
+        console.log("Flux Response:", content);
+
+        if (!content) throw new Error("No content received from specific model");
+
+        // Extract URL
+        const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
+        let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : null;
+
+        if (url && url.includes('](')) {
+            url = url.split('](')[1].replace(')', '');
+        }
+
+        if (!url || !url.startsWith('http')) {
+            throw new Error("Could not parse Image URL from response: " + content);
+        }
+
+        return url;
+
+    } catch (e: any) {
+        console.error("Flux 1.1 Pro Generation Failed:", e);
+
+        // Fallback to Schnell if Pro fails (e.g. permissions/cost)
+        // This is the "Speed" option recommended by user
+        try {
+            console.log("Falling back to Flux 1 Schnell...", e.message);
+            const client = getClient();
+            const response = await client.chat.completions.create({
+                model: "black-forest-labs/flux-1-schnell",
+                messages: [{ role: "user", content: prompt }]
             });
-
-            if (!response.ok) {
-                const errText = await response.text();
-                throw new Error(`OpenRouter API Error: ${response.status} - ${errText}`);
-            }
-
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content || "";
-
-            // OpenRouter Flux usually returns a Markdown Image link: ![image](url)
-            // Or sometimes just the URL.
-            // Regex to find http/https links
+            const content = response.choices[0].message.content || "";
             const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
             let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : null;
+            if (url && url.includes('](')) url = url.split('](')[1].replace(')', '');
 
-            if (url && url.includes('](')) {
-                url = url.split('](')[1].replace(')', '');
-            }
-
-            if (url && url.startsWith('http')) {
-                return url;
-            }
-            console.warn("No URL found in OpenRouter response:", content);
+            if (url) return url;
+        } catch (fallbackError) {
+            console.error("Fallback Failed:", fallbackError);
         }
-    } catch (e) {
-        console.error("OpenRouter Generation Failed:", e);
-        // Continue to fallback...
-    }
 
-    // 2. Fallback: Pollinations.ai (Free, Fast, but Rate Limited)
-    try {
-        console.log("Falling back to Pollinations.ai...");
-        const seed = Math.floor(Math.random() * 1000000);
-        // Add specific style modifiers
-        const enhancedPrompt = `${prompt} . highly detailed, cinematic lighting, 8k resolution`;
-        const encodedPrompt = encodeURIComponent(enhancedPrompt.substring(0, 800)); // Limit length
-
-        return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=${width}&height=${height}&seed=${seed}&nologo=true&model=flux`;
-    } catch (e) {
-        console.error("Pollinations Fallback Failed:", e);
-        // Emergency Fallback
-        return `https://placehold.co/${width}x${height}/1e293b/ffffff?text=Generation+Failed`;
+        throw new Error(`Generation Failed: ${e.message || "Unknown Error"}`);
     }
 };
