@@ -29,7 +29,7 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
             : "OUTPUT LANGUAGE: ENGLISH.";
 
         const completion = await client.chat.completions.create({
-            model: "deepseek/deepseek-chat",
+            model: "google/gemini-3-flash-preview", // Updated to latest Gemini model
             messages: [
                 {
                     role: "system",
