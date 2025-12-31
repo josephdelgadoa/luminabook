@@ -33,14 +33,30 @@ const FORMATS: Record<string, PageFormat> = {
     }
 };
 
-export const generatePDF = async (book: EBook, config: ExportConfig): Promise<void> => {
-    console.log("Generating PDF...", book.title, config);
+// Helper: Load image from URL to Base64 (needed for jsPDF)
+const loadImage = async (url: string): Promise<string | null> => {
+    if (!url) return null;
+    try {
+        const response = await fetch(url);
+        const blob = await response.blob();
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onloadend = () => resolve(reader.result as string);
+            reader.onerror = () => resolve(null);
+            reader.readAsDataURL(blob);
+        });
+    } catch (e) {
+        console.warn("Failed to load PDF image:", url, e);
+        return null;
+    }
+};
 
-    // Get format config, default to A4 if unknown
+export const generatePDF = async (book: EBook, config: ExportConfig): Promise<void> => {
+    console.log("Generating Professional PDF...", book.title, config);
+
     const formatKey = config.pageSize || 'a4';
     const fmt = FORMATS[formatKey] || FORMATS['a4'];
 
-    // Adjust margins for bleed if requested (simulated by adding safe buffer)
     const marginX = config.bleed ? fmt.margin.x + 5 : fmt.margin.x;
     const marginTop = config.bleed ? fmt.margin.top + 5 : fmt.margin.top;
     const marginBottom = config.bleed ? fmt.margin.bottom + 5 : fmt.margin.bottom;
@@ -51,100 +67,140 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
         format: [fmt.width, fmt.height]
     });
 
-    // --- COVER PAGE ---
-    doc.setFillColor(15, 23, 42); // Slate 900 background
-    doc.rect(0, 0, fmt.width, fmt.height, 'F');
+    // --- 1. COVER PAGE (Pro Design) ---
+    const coverImage = await loadImage(book.coverImageUrl || "");
 
+    if (coverImage) {
+        // Full Bleed Image
+        doc.addImage(coverImage, 'JPEG', 0, 0, fmt.width, fmt.height);
+
+        // Professional "Gradient Overlay" Simulation for Readability
+        // jsPDF doesn't natively support gradients easily, so we overlay a black rect with low alpha
+        // Actually, we can draw a black rect at the top 30% with transparency.
+        doc.saveGraphicsState();
+        doc.setGState(new (doc as any).GState({ opacity: 0.6 })); // 60% opacity dark overlay
+        doc.setFillColor(0, 0, 0);
+        doc.rect(0, 0, fmt.width, fmt.height * 0.4, 'F'); // Darken top 40%
+        doc.restoreGraphicsState();
+    } else {
+        // Fallback Dark Background
+        doc.setFillColor(15, 23, 42);
+        doc.rect(0, 0, fmt.width, fmt.height, 'F');
+    }
+
+    // Cover Typography
     doc.setTextColor(255, 255, 255);
-    doc.setFontSize(fmt.fontSize.title);
+    doc.setFont("times", "bold");
 
-    // Center Title
-    const titleLines = doc.splitTextToSize(book.title || "Untitled", fmt.width - (marginX * 2));
-    const titleY = fmt.height * 0.4;
+    // Title (Large, Top Centered)
+    // Shadow Effect: Draw black text slightly offset, then white text
+    const titleSize = fmt.fontSize.title * 2; // Make it BIG (Thumbnail Rule)
+    doc.setFontSize(titleSize);
+
+    const titleLines = doc.splitTextToSize(book.title.toUpperCase(), fmt.width - (marginX * 2));
+    const titleY = fmt.height * 0.2; // Top 20%
+
+    // Draw Shadow
+    doc.setTextColor(0, 0, 0);
+    doc.text(titleLines, (fmt.width / 2) + 0.5, titleY + 0.5, { align: 'center' });
+
+    // Draw Main Title
+    doc.setTextColor(255, 255, 255);
     doc.text(titleLines, fmt.width / 2, titleY, { align: 'center' });
 
-    // Note: User requested Author Info on a different page.
-    // We only keep the Title on the graphical cover.
+    // Author (Smaller, below title)
+    const authorY = titleY + (titleLines.length * (titleSize * 0.4)) + 20;
+    doc.setFontSize(fmt.fontSize.title); // ~50% of title
+    doc.setFont("times", "normal");
+    doc.text(book.author || "Author Name", fmt.width / 2, authorY, { align: 'center' });
 
-    // --- PAGE 2: TITLE PAGE (Title + Author) ---
+
+    // --- 2. TITLE PAGE (Standard) ---
     doc.addPage();
-    doc.setTextColor(0, 0, 0); // Reset text to black
+    doc.setTextColor(0, 0, 0);
+    let tpCursor = fmt.height * 0.4;
 
-    // Vertical center for Title Page content
-    let tpCursorY = fmt.height * 0.35;
-
-    // Title Again
     doc.setFont("times", "bold");
     doc.setFontSize(fmt.fontSize.title);
-    doc.text(titleLines, fmt.width / 2, tpCursorY, { align: 'center' });
+    doc.text(book.title, fmt.width / 2, tpCursor, { align: 'center' });
 
-    tpCursorY += (titleLines.length * 10) + 20;
-
-    // Author
-    doc.setFont("times", "italic");
+    tpCursor += 20;
     doc.setFontSize(fmt.fontSize.chapter);
-    doc.text(`by ${book.author || "Joseph Delgado"}`, fmt.width / 2, tpCursorY, { align: 'center' });
-
-    // Optional Publisher Mark
-    tpCursorY += 40;
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(100, 100, 100);
-    doc.text("LuminaBook Press Edition", fmt.width / 2, fmt.height - marginBottom, { align: 'center' });
+    doc.setFont("times", "italic");
+    doc.text(`by ${book.author}`, fmt.width / 2, tpCursor, { align: 'center' });
 
 
-    // --- CONTENT PAGES ---
-    doc.setTextColor(0, 0, 0);
+    // --- 3. CHAPTERS ---
+    // Detect Language for Header (Simple heuristic)
+    const isSpanish = /cap[ií]tulo|introducc|pr[óo]l/i.test(JSON.stringify(book.chapters));
+    const chapterWord = isSpanish ? "Capítulo" : "Chapter";
 
-    book.chapters.forEach((chapter, index) => {
+    let chapterCount = 0;
+
+    for (const chapter of book.chapters) {
         doc.addPage();
         let cursorY = marginTop;
 
-        // Chapter Header
-        const isIntro = /intro|prologue|prólogo|preface|prefacio/i.test(chapter.title);
+        // 3.1 Chapter Image
+        const chapImg = await loadImage(chapter.imageUrl || "");
+        if (chapImg) {
+            // Cinematic 2:1 aspect ratio at top of page
+            const imgHeight = (fmt.width - (marginX * 2)) / 2;
+            doc.addImage(chapImg, 'JPEG', marginX, cursorY, fmt.width - (marginX * 2), imgHeight);
+            cursorY += imgHeight + 10;
+        }
 
-        doc.setFontSize(fmt.fontSize.chapter);
+        // 3.2 Smart Header Logic
+        const isSpecial = /intro|prologue|prólogo|preface|prefacio/i.test(chapter.title);
+
         doc.setFont("helvetica", "bold");
+        doc.setFontSize(fmt.fontSize.chapter);
+        doc.setTextColor(100, 100, 100); // Grey header
 
-        if (!isIntro) {
-            const previousChapters = book.chapters.slice(0, index + 1).filter(c => !/intro|prologue|prólogo|preface|prefacio/i.test(c.title));
-            const chapterNum = previousChapters.length;
-            doc.text(`Chapter ${chapterNum}`, marginX, cursorY);
-            cursorY += 10;
+        // Logic: Only add "Chapter X" if the title DOES NOT already start with it.
+        if (!isSpecial) {
+            chapterCount++;
+            // Normalize check
+            const startsWithHeader = new RegExp(`^${chapterWord}`, 'i').test(chapter.title);
+
+            if (!startsWithHeader) {
+                doc.text(`${chapterWord} ${chapterCount}`, marginX, cursorY);
+                cursorY += 8;
+            }
         }
 
+        // 3.3 Chapter Title
+        doc.setFont("times", "bold");
         doc.setFontSize(fmt.fontSize.title);
+        doc.setTextColor(0, 0, 0); // Black
 
-        const textWidth = fmt.width - (marginX * 2);
-        const titleLines = doc.splitTextToSize(chapter.title, textWidth);
+        // If title was "Chapter 1: The Beginning", and we just wrote "Chapter 1", 
+        // we might want to strip "Chapter 1" from the main title line to avoid Double Header?
+        // User asked to fix "Chapter 1 Chapter 1".
+        // If the title IS "Chapter 1", we shouldn't print the header above it.
 
-        // Check if title fits, else add page (unlikely for title alone but good practice)
-        if (cursorY + (titleLines.length * 10) > fmt.height - marginBottom) {
-            doc.addPage();
-            cursorY = marginTop;
-        }
+        // Clean duplicate content from title line if we printed a header
+        const cleanTitle = chapter.title;
 
+        const titleLines = doc.splitTextToSize(cleanTitle, fmt.width - (marginX * 2));
         doc.text(titleLines, marginX, cursorY);
-        cursorY += (titleLines.length * 10) + 5; // Add dynamic spacing based on title height
+        cursorY += (titleLines.length * 10) + 10;
 
-        // Chapter Body
+        // 3.4 Content
+        doc.setFont("times", "normal");
         doc.setFontSize(fmt.fontSize.body);
-        doc.setFont("times", "normal"); // Times New Roman is standard for books
 
-        const splitText = doc.splitTextToSize(chapter.content, textWidth);
+        const contentParts = doc.splitTextToSize(chapter.content, fmt.width - (marginX * 2));
 
-        // Pagination Loop
-        for (let i = 0; i < splitText.length; i++) {
-            // Check if we need a new page
+        for (const line of contentParts) {
             if (cursorY + fmt.lineHeight > fmt.height - marginBottom) {
                 doc.addPage();
                 cursorY = marginTop;
             }
-
-            doc.text(splitText[i], marginX, cursorY);
+            doc.text(line, marginX, cursorY);
             cursorY += fmt.lineHeight;
         }
-    });
+    }
 
     const safeTitle = (book.title || "book").replace(/[^a-z0-9]/gi, '_').toLowerCase();
     doc.save(`${safeTitle}_${formatKey}.pdf`);
