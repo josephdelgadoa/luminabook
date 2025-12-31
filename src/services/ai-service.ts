@@ -114,7 +114,7 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
     } catch (error: any) {
         console.error("AI Analysis CRITICAL FAILURE:", error);
 
-        const errorMessage = error instanceof Error ? error.message : String(error);
+
 
         // Fail-safe: Return clean structure instead of scary error
         // This allows the user to continue working even if AI failed
