@@ -161,6 +161,12 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     <div className="flex-1 overflow-y-auto p-8 md:p-12 custom-scrollbar">
                         <div className="max-w-xl mx-auto">
                             <div className="text-center mb-12">
+                                {chapter.imageUrl && (
+                                    <div className="mb-8 rounded-lg overflow-hidden shadow-lg border border-slate-100">
+                                        <img src={chapter.imageUrl} alt={chapter.title} className="w-full h-auto object-cover max-h-[300px]" />
+                                    </div>
+                                )}
+
                                 <span className="text-xs font-bold uppercase tracking-widest opacity-40 mb-2 block">
                                     {(() => {
                                         if (/intro|prologue|prólogo|preface|prefacio/i.test(chapter.title)) {
@@ -168,7 +174,15 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                         }
                                         const prevChapters = book.chapters?.slice(0, chapterIndex + 1).filter(c => !/intro|prologue|prólogo|preface|prefacio/i.test(c.title));
                                         const num = prevChapters?.length || (chapterIndex + 1);
-                                        return `Chapter ${num}`;
+                                        const label = `Chapter ${num}`;
+                                        const spanishLabel = `Capítulo ${num}`;
+
+                                        // Avoid duplication if title already contains the label
+                                        if (chapter.title.toLowerCase().includes(label.toLowerCase()) ||
+                                            chapter.title.toLowerCase().includes(spanishLabel.toLowerCase())) {
+                                            return "";
+                                        }
+                                        return label;
                                     })()}
                                 </span>
                                 <h2
@@ -177,18 +191,13 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 >
                                     {chapter.title}
                                 </h2>
-                                {chapter.imageUrl && (
-                                    <div className="mb-8 rounded-lg overflow-hidden shadow-lg border border-slate-100">
-                                        <img src={chapter.imageUrl} alt={chapter.title} className="w-full h-auto object-cover max-h-[300px]" />
-                                    </div>
-                                )}
                             </div>
 
                             <div
                                 className="prose prose-slate prose-lg max-w-none text-justify leading-loose"
                                 style={{ fontFamily: currentTheme.fontBody }}
                             >
-                                {chapter.content.split('\n').map((para, i) => (
+                                {chapter.content.split(/\n+/).map((para, i) => (
                                     para.trim() && <p key={i} className="mb-6 indent-8 opacity-90">{para}</p>
                                 ))}
                             </div>

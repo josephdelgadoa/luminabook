@@ -138,8 +138,14 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
                         {/* Paper Sheet */}
                         <div className="bg-white flex-1 rounded-sm shadow-2xl p-8 md:p-12 overflow-y-auto custom-scrollbar border border-slate-200/50">
                             <div className="mb-12 text-center border-b-2 border-slate-950 pb-8">
+                                {book.coverImageUrl && (
+                                    <div className="mb-8 w-32 mx-auto rounded overflow-hidden shadow-lg transform rotate-[-2deg] border-2 border-slate-900/10">
+                                        <img src={book.coverImageUrl} alt="Cover" className="w-full h-auto object-cover" />
+                                    </div>
+                                )}
                                 <h3 className="text-4xl font-serif font-bold text-slate-900 mb-4 leading-tight">{book.title}</h3>
-                                <p className="text-lg font-serif italic text-slate-500">{book.description}</p>
+                                <p className="text-lg font-serif italic text-slate-500">{book.author || "Author Info"}</p>
+                                <p className="text-sm font-sans text-slate-400 mt-4 max-w-sm mx-auto">{book.description}</p>
                             </div>
 
                             <div className="space-y-8">
