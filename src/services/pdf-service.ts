@@ -67,20 +67,27 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
         format: [fmt.width, fmt.height]
     });
 
-    // --- 1. COVER PAGE (Pro Design) ---
+    // --- 1. COVER PAGE (Pro Design Rules) ---
     const coverImage = await loadImage(book.coverImageUrl || "");
 
     if (coverImage) {
-        // Full Bleed Image
+        // Rule: Full Bleed Image
         doc.addImage(coverImage, 'JPEG', 0, 0, fmt.width, fmt.height);
 
-        // Professional "Gradient Overlay" Simulation for Readability
-        // jsPDF doesn't natively support gradients easily, so we overlay a black rect with low alpha
-        // Actually, we can draw a black rect at the top 30% with transparency.
+        // Rule: Gradient Overlay / "Negative Space" Technique
+        // We darken the top 35% significantly to create a "safe zone" for the title.
+        // And the bottom 20% for the author name.
+
         doc.saveGraphicsState();
-        doc.setGState(new (doc as any).GState({ opacity: 0.6 })); // 60% opacity dark overlay
+        // Top Dark Zone (for Title) - 70% Opacity
+        doc.setGState(new (doc as any).GState({ opacity: 0.7 }));
         doc.setFillColor(0, 0, 0);
-        doc.rect(0, 0, fmt.width, fmt.height * 0.4, 'F'); // Darken top 40%
+        doc.rect(0, 0, fmt.width, fmt.height * 0.35, 'F');
+
+        // Bottom Dark Zone (for Author) - 60% Opacity
+        doc.setGState(new (doc as any).GState({ opacity: 0.6 }));
+        doc.rect(0, fmt.height * 0.8, fmt.width, fmt.height * 0.2, 'F');
+
         doc.restoreGraphicsState();
     } else {
         // Fallback Dark Background
@@ -92,27 +99,42 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
     doc.setTextColor(255, 255, 255);
     doc.setFont("times", "bold");
 
-    // Title (Large, Top Centered)
-    // Shadow Effect: Draw black text slightly offset, then white text
-    const titleSize = fmt.fontSize.title * 2; // Make it BIG (Thumbnail Rule)
+    // Rule: Thumbnail Rule / Hierarchy
+    // Title should be ~25-40% of visual weight. We scale font size up.
+    const titleSize = fmt.fontSize.title * 2.5;
     doc.setFontSize(titleSize);
 
     const titleLines = doc.splitTextToSize(book.title.toUpperCase(), fmt.width - (marginX * 2));
-    const titleY = fmt.height * 0.2; // Top 20%
+    const titleY = fmt.height * 0.15; // Start 15% down (centered in top dark zone)
 
-    // Draw Shadow
+    // Rule: Soft Drop Shadow (No Stroke!)
+    // Simulate soft shadow by drawing at multiple offsets with low opacity
+    const shadowOffsets = [0.2, 0.4, 0.6, 0.8]; // mm offsets
     doc.setTextColor(0, 0, 0);
-    doc.text(titleLines, (fmt.width / 2) + 0.5, titleY + 0.5, { align: 'center' });
 
-    // Draw Main Title
+    shadowOffsets.forEach(off => {
+        doc.saveGraphicsState();
+        doc.setGState(new (doc as any).GState({ opacity: 0.25 })); // Low opacity per layer
+        doc.text(titleLines, (fmt.width / 2) + off, titleY + off, { align: 'center' });
+        doc.restoreGraphicsState();
+    });
+
+    // Draw Main Title (Bright White)
     doc.setTextColor(255, 255, 255);
     doc.text(titleLines, fmt.width / 2, titleY, { align: 'center' });
 
-    // Author (Smaller, below title)
-    const authorY = titleY + (titleLines.length * (titleSize * 0.4)) + 20;
-    doc.setFontSize(fmt.fontSize.title); // ~50% of title
+    // Author (Placed in Bottom Dark Zone)
+    doc.setFontSize(fmt.fontSize.title); // ~50% of title size
     doc.setFont("times", "normal");
+    // Add slight spacing/tracking if possible (jspdf limits), but normal is fine.
+    const authorY = fmt.height * 0.9;
     doc.text(book.author || "Author Name", fmt.width / 2, authorY, { align: 'center' });
+
+    // Tagline / Subtitle
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(200, 200, 200);
+    doc.text("LuminaBook Edition", fmt.width / 2, authorY + 8, { align: 'center' });
 
 
     // --- 2. TITLE PAGE (Standard) ---
@@ -131,7 +153,6 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
 
 
     // --- 3. CHAPTERS ---
-    // Detect Language for Header (Simple heuristic)
     const isSpanish = /cap[ií]tulo|introducc|pr[óo]l/i.test(JSON.stringify(book.chapters));
     const chapterWord = isSpanish ? "Capítulo" : "Chapter";
 
@@ -174,14 +195,7 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
         doc.setFontSize(fmt.fontSize.title);
         doc.setTextColor(0, 0, 0); // Black
 
-        // If title was "Chapter 1: The Beginning", and we just wrote "Chapter 1", 
-        // we might want to strip "Chapter 1" from the main title line to avoid Double Header?
-        // User asked to fix "Chapter 1 Chapter 1".
-        // If the title IS "Chapter 1", we shouldn't print the header above it.
-
-        // Clean duplicate content from title line if we printed a header
         const cleanTitle = chapter.title;
-
         const titleLines = doc.splitTextToSize(cleanTitle, fmt.width - (marginX * 2));
         doc.text(titleLines, marginX, cursorY);
         cursorY += (titleLines.length * 10) + 10;
