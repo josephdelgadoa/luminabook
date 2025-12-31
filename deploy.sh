@@ -9,9 +9,9 @@ if [ -f .env ]; then
   export $(cat .env | xargs)
 fi
 
-API_KEY="$VITE_GEMINI_API_KEY"
+API_KEY="$VITE_DEEPSEEK_API_KEY"
 if [ -z "$API_KEY" ]; then
-  echo "Error: VITE_GEMINI_API_KEY not found in .env"
+  echo "Error: VITE_DEEPSEEK_API_KEY not found in .env"
   exit 1
 fi
 
@@ -26,7 +26,7 @@ git pull origin main
 
 # Build the Docker image
 echo "Building Docker image..."
-docker build --build-arg VITE_GEMINI_API_KEY="$API_KEY" -t $IMAGE_NAME .
+docker build --build-arg VITE_DEEPSEEK_API_KEY="$API_KEY" -t $IMAGE_NAME .
 
 # Remove any existing container (running or stopped)
 echo "Removing existing container if it exists..."
@@ -38,7 +38,7 @@ docker run -d \
   --name $APP_NAME \
   --restart always \
   -p $PORT:80 \
-  -e VITE_GEMINI_API_KEY="$API_KEY" \
+  -e VITE_DEEPSEEK_API_KEY="$API_KEY" \
   $IMAGE_NAME
 
 echo "Deployment complete!"
