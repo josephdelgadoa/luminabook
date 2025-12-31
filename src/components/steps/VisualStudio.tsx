@@ -169,9 +169,32 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     <div className="flex-1 overflow-y-auto p-8 md:p-12 custom-scrollbar">
                         <div className="max-w-xl mx-auto">
                             <div className="text-center mb-12">
-                                {chapter.imageUrl && (
-                                    <div className="mb-8 rounded-lg overflow-hidden shadow-lg border border-slate-100">
+                                {chapter.imageUrl ? (
+                                    <div className="mb-8 rounded-lg overflow-hidden shadow-lg border border-slate-100 relative group">
                                         <img src={chapter.imageUrl} alt={chapter.title} className="w-full h-auto object-cover max-h-[300px]" />
+
+                                        {/* Overlay Button */}
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button
+                                                onClick={() => handleGenerateImage(chapter.id, 'chapter')}
+                                                className="bg-white/90 hover:bg-white text-slate-900 px-4 py-2 rounded-full text-xs font-bold uppercase tracking-wider shadow-xl flex items-center gap-2 transform translate-y-2 group-hover:translate-y-0 transition-all"
+                                            >
+                                                <RefreshCw className="w-3 h-3" /> Regenerate
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="mb-8 rounded-lg overflow-hidden border-2 border-dashed border-slate-200 bg-slate-50 py-12 flex flex-col items-center justify-center group h-[300px]">
+                                        <div className="text-slate-400 mb-4"><ImageIcon className="w-12 h-12 opacity-50" /></div>
+                                        <button
+                                            onClick={() => handleGenerateImage(chapter.id, 'chapter')}
+                                            className="bg-indigo-600 hover:bg-indigo-500 text-white px-6 py-3 rounded-full text-sm font-bold uppercase tracking-wider shadow-lg flex items-center gap-2 transform transition-all hover:scale-105"
+                                        >
+                                            <Sparkles className="w-4 h-4" /> Generate Illustration
+                                        </button>
+                                        <p className="text-xs text-slate-400 mt-4 max-w-sm px-8 text-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            "{chapter.imagePrompt || "Generate an artistic illustration for this chapter..."}"
+                                        </p>
                                     </div>
                                 )}
 
@@ -282,6 +305,15 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                         {book.coverImageUrl && !isGenerating && <span className="text-xs text-green-400 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Ready</span>}
                                     </div>
 
+                                    {/* Editable Prompt */}
+                                    <textarea
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-300 mb-3 focus:ring-1 focus:ring-indigo-500 outline-none resize-none custom-scrollbar"
+                                        rows={3}
+                                        value={book.coverImagePrompt || ""}
+                                        placeholder="Enter prompt for cover image..."
+                                        onChange={(e) => setBook({ ...book, coverImagePrompt: e.target.value })}
+                                    />
+
                                     {isGenerating === 'cover' ? (
                                         <div className="h-48 mb-3 rounded-lg overflow-hidden">
                                             <ImageSkeleton />
@@ -304,6 +336,15 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                         {book.backCoverImageUrl && !isGenerating && <span className="text-xs text-green-400 flex items-center gap-1"><Sparkles className="w-3 h-3" /> Ready</span>}
                                     </div>
 
+                                    {/* Editable Prompt */}
+                                    <textarea
+                                        className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs text-slate-300 mb-3 focus:ring-1 focus:ring-indigo-500 outline-none resize-none custom-scrollbar"
+                                        rows={3}
+                                        value={book.backCoverImagePrompt || ""}
+                                        placeholder="Enter prompt for back cover..."
+                                        onChange={(e) => setBook({ ...book, backCoverImagePrompt: e.target.value })}
+                                    />
+
                                     {isGenerating === 'back' ? (
                                         <div className="h-48 mb-3 rounded-lg overflow-hidden">
                                             <ImageSkeleton />
@@ -322,40 +363,48 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 {/* Chapters Grid - Masonry-ish feel */}
                                 <div>
                                     <span className="text-xs text-slate-500 font-medium block mt-6 mb-4 uppercase tracking-wider">Chapter Illustrations</span>
-                                    <div className="grid grid-cols-2 gap-3">
+                                    <div className="space-y-4">
                                         {book.chapters?.map((chapter, i) => (
-                                            <div key={chapter.id} className="relative group rounded-lg overflow-hidden border border-slate-800 bg-slate-900">
-                                                <div className="aspect-square bg-slate-800">
-                                                    {isGenerating === chapter.id ? (
-                                                        <ImageSkeleton />
-                                                    ) : chapter.imageUrl ? (
-                                                        <img src={chapter.imageUrl} className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" alt={chapter.title} />
-                                                    ) : (
-                                                        <div className="w-full h-full flex items-center justify-center text-slate-700">
-                                                            <ImageIcon className="w-8 h-8" />
+                                            <div key={chapter.id} className="bg-slate-900 rounded-xl p-3 border border-slate-800">
+                                                <div className="flex gap-4">
+                                                    {/* Thumbnail */}
+                                                    <div className="w-20 h-20 shrink-0 bg-slate-800 rounded-lg overflow-hidden relative group">
+                                                        {isGenerating === chapter.id ? (
+                                                            <ImageSkeleton />
+                                                        ) : chapter.imageUrl ? (
+                                                            <img src={chapter.imageUrl} className="w-full h-full object-cover" alt={chapter.title} />
+                                                        ) : (
+                                                            <div className="w-full h-full flex items-center justify-center text-slate-700">
+                                                                <ImageIcon className="w-6 h-6" />
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* Controls */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex justify-between items-start mb-2">
+                                                            <span className="text-xs font-medium text-white truncate w-3/4 block" title={chapter.title}>{chapter.title}</span>
+                                                            <button
+                                                                onClick={() => handleGenerateImage(chapter.id, 'chapter')}
+                                                                disabled={!!isGenerating}
+                                                                className="text-indigo-400 hover:text-indigo-300 disabled:opacity-50"
+                                                                title="Generate Image"
+                                                            >
+                                                                <Sparkles className="w-4 h-4" />
+                                                            </button>
                                                         </div>
-                                                    )}
-                                                </div>
-
-                                                <button
-                                                    onClick={() => handleGenerateImage(chapter.id, 'chapter')}
-                                                    disabled={!!isGenerating}
-                                                    className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-all z-10"
-                                                >
-                                                    <Sparkles className="w-5 h-5 text-white drop-shadow-lg" />
-                                                </button>
-
-                                                <div className="absolute bottom-0 left-0 right-0 p-2 bg-gradient-to-t from-black/90 to-transparent pointer-events-none">
-                                                    <span className="text-[10px] text-white font-medium truncate block">
-                                                        {(() => {
-                                                            if (/intro|prologue|prólogo|preface|prefacio/i.test(chapter.title)) {
-                                                                return chapter.title;
-                                                            }
-                                                            const prevChapters = book.chapters?.slice(0, i + 1).filter(c => !/intro|prologue|prólogo|preface|prefacio/i.test(c.title));
-                                                            const num = prevChapters?.length || (i + 1);
-                                                            return `${num}. ${chapter.title}`;
-                                                        })()}
-                                                    </span>
+                                                        <textarea
+                                                            className="w-full bg-slate-950 border border-slate-800 rounded p-2 text-[10px] text-slate-400 focus:text-slate-200 focus:border-slate-700 outline-none resize-none custom-scrollbar"
+                                                            rows={2}
+                                                            value={chapter.imagePrompt || ""}
+                                                            placeholder="Prompt..."
+                                                            onChange={(e) => {
+                                                                const newChapters = [...(book.chapters || [])];
+                                                                newChapters[i] = { ...chapter, imagePrompt: e.target.value };
+                                                                setBook({ ...book, chapters: newChapters });
+                                                            }}
+                                                        />
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
