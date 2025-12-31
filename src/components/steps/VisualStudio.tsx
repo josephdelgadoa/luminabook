@@ -41,7 +41,6 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
         setError(null);
 
         try {
-            // Force 16:3 aspect ratio logic for prompts if needed, or just let Flux handle it via style
             const styleSuffix = isCoverSelected ? "" : ", cinematic panoramic, wide aspect ratio";
             const finalPrompt = promptText + (promptText.includes('aspect') ? '' : styleSuffix);
 
@@ -71,17 +70,20 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     return (
         <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden rounded-2xl border border-white/10 shadow-2xl relative">
 
-            {/* LEFT: THE SCROLLABLE CANVAS (Full Book View) */}
-            <div className={`relative flex-1 h-full overflow-y-auto custom-scrollbar transition-all duration-500 ease-in-out ${showUI ? 'lg:mr-[400px]' : ''}`}>
-                <div className="max-w-4xl mx-auto min-h-full pb-32">
+            {/* LEFT: THE SCROLLABLE CANVAS (Full Book View - MANUSCRIPT STYLE) */}
+            <div className={`relative flex-1 h-full overflow-y-auto custom-scrollbar transition-all duration-500 ease-in-out bg-slate-100 ${showUI ? 'lg:mr-[400px]' : ''}`}>
+                {/* Paper Ambient Texture */}
+                <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pointer-events-none fixed" />
 
-                    {/* --- 1. COVER SECTION --- */}
+                <div className="max-w-4xl mx-auto min-h-full pb-32 pt-12 px-4 md:px-12 relative z-10">
+
+                    {/* --- 1. COVER SECTION (Distinct) --- */}
                     <div
                         onClick={() => setSelectedSectionId('cover')}
-                        className={`relative group cursor-pointer transition-all duration-300 ${isCoverSelected ? 'ring-2 ring-amber-500' : 'hover:ring-1 hover:ring-white/20'}`}
+                        className={`relative group cursor-pointer transition-all duration-300 shadow-2xl mb-16 rounded-sm overflow-hidden ${isCoverSelected ? 'ring-4 ring-amber-500' : 'hover:ring-2 hover:ring-indigo-500/30'}`}
                     >
-                        {/* Full Height Cover Wrapper */}
-                        <div className="relative w-full aspect-[2/3] lg:aspect-[16/9] lg:h-[80vh] overflow-hidden">
+                        {/* Wrapper to maintain aspect ratio */}
+                        <div className="relative w-full aspect-[2/3] lg:aspect-[16/9] lg:h-[70vh]">
                             {book.coverImageUrl ? (
                                 <img src={book.coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
                             ) : (
@@ -93,7 +95,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
 
                             {/* Cinematic Overlay */}
                             <div className="absolute inset-0 flex flex-col justify-end p-12 bg-gradient-to-t from-black via-black/40 to-transparent">
-                                <h1 className="font-serif text-5xl lg:text-7xl font-bold text-center text-white drop-shadow-2xl mb-8">
+                                <h1 className="font-serif text-5xl lg:text-7xl font-bold text-center text-white drop-shadow-2xl mb-8 leading-tight">
                                     {book.title || "Untitled Book"}
                                 </h1>
                                 <div className="flex flex-col items-center">
@@ -106,7 +108,6 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                             </div>
                         </div>
 
-                        {/* Selection Indicator */}
                         {isCoverSelected && (
                             <div className="absolute top-4 right-4 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-lg z-10">
                                 <Wand2 size={12} /> EDITING COVER
@@ -114,13 +115,11 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         )}
                     </div>
 
-                    {/* --- 2. BOOK CONTENT (Chapters) --- */}
-                    <div className="px-8 lg:px-16 py-16 space-y-24 bg-neutral-900/50">
+                    {/* --- 2. BOOK CONTENT (Paper Style) --- */}
+                    <div className="space-y-16">
                         {book.chapters?.map((chapter, index) => {
                             const isSelected = selectedSectionId === chapter.id;
 
-                            // 16:3 Aspect Ratio for Banner
-                            // Tailwind doesn't have 16/3 built-in, using custom style or approximate
                             return (
                                 <div
                                     key={chapter.id || index}
@@ -129,36 +128,39 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                         e.stopPropagation();
                                         setSelectedSectionId(chapter.id || 'cover');
                                     }}
-                                    className={`relative rounded-xl overflow-hidden transition-all duration-300 border ${isSelected ? 'border-amber-500 shadow-2xl shadow-amber-900/20' : 'border-white/5 hover:border-white/20'}`}
+                                    className={`relative bg-white shadow-xl rounded-sm overflow-hidden transition-all duration-300 border ${isSelected ? 'border-amber-500 ring-4 ring-amber-500/20' : 'border-slate-200 hover:border-indigo-300'}`}
                                 >
-                                    {/* Chapter Banner Image (16:3) */}
-                                    <div className="relative w-full aspect-[16/5] bg-slate-800 overflow-hidden group">
+                                    {/* 16:3 Aspect Ratio Image Banner (Requested) */}
+                                    <div className="relative w-full aspect-[16/3] bg-slate-100 overflow-hidden group border-b border-slate-100">
                                         {chapter.imageUrl ? (
                                             <img src={chapter.imageUrl} alt={chapter.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                         ) : (
-                                            <div className="w-full h-full flex items-center justify-center text-white/10">
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                                                 <ImageIcon size={32} />
+                                                <span className="text-[10px] uppercase tracking-widest mt-2">16:3 Visual Scenery</span>
                                             </div>
                                         )}
 
-                                        {/* Chapter Title Overlay */}
-                                        <div className="absolute bottom-0 left-0 right-0 p-6 bg-gradient-to-t from-black/90 to-transparent">
-                                            <h2 className="font-serif text-3xl text-white font-bold">{chapter.title}</h2>
-                                        </div>
-
+                                        {/* Status Badge */}
                                         {isSelected && (
-                                            <div className="absolute top-4 right-4 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-lg">
+                                            <div className="absolute top-4 right-4 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-lg z-10">
                                                 <Wand2 size={12} /> EDITING
                                             </div>
                                         )}
                                     </div>
 
-                                    {/* Full Text Content */}
-                                    <div className="p-8 lg:p-12 bg-black/40 text-gray-300 leading-relaxed font-serif text-lg space-y-6">
-                                        {chapter.content?.split('\n').map((para, i) => (
-                                            para.trim() && <p key={i}>{para.trim()}</p>
-                                        ))}
-                                        {!chapter.content && <p className="italic opacity-30">No content available for this chapter.</p>}
+                                    {/* Manuscript Paper Content */}
+                                    <div className="p-12 lg:p-16">
+                                        <h2 className="font-serif text-3xl font-bold text-slate-900 mb-8 pb-4 border-b border-slate-900/10">
+                                            {chapter.title}
+                                        </h2>
+
+                                        <div className="text-slate-700 leading-loose font-serif text-lg space-y-6 max-w-none text-justify">
+                                            {chapter.content?.split('\n').map((para, i) => (
+                                                para.trim() && <p key={i}>{para.trim()}</p>
+                                            ))}
+                                            {!chapter.content && <p className="italic text-slate-400">No content available for this chapter.</p>}
+                                        </div>
                                     </div>
                                 </div>
                             );
@@ -166,21 +168,21 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     </div>
 
                     {/* End of Book Marker */}
-                    <div className="flex justify-center pb-16 opacity-30">
+                    <div className="flex justify-center pt-16 pb-8 opacity-20 text-slate-400">
                         <BookOpen size={24} />
                     </div>
                 </div>
 
-                {/* UI Toggle */}
+                {/* UI Toggle (Dark on Light) */}
                 <button
                     onClick={() => setShowUI(!showUI)}
-                    className="fixed top-8 right-8 z-30 p-3 rounded-full bg-black/50 hover:bg-white/10 backdrop-blur-md border border-white/10 transition-all"
+                    className="fixed top-8 right-8 z-30 p-3 rounded-full bg-slate-900 text-white hover:bg-slate-800 shadow-xl transition-all"
                 >
                     {showUI ? <Maximize2 size={18} /> : <Minimize2 size={18} />}
                 </button>
             </div>
 
-            {/* RIGHT: ART DIRECTOR PANEL (Controls) */}
+            {/* RIGHT: ART DIRECTOR PANEL (Stays Dark) */}
             <AnimatePresence>
                 {showUI && (
                     <motion.div
@@ -188,14 +190,14 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="absolute right-0 top-0 bottom-0 w-full lg:w-[400px] bg-black/80 backdrop-blur-xl border-l border-white/10 flex flex-col z-20 shadow-2xl"
+                        className="absolute right-0 top-0 bottom-0 w-full lg:w-[400px] bg-black/90 backdrop-blur-xl border-l border-white/10 flex flex-col z-20 shadow-2xl"
                     >
                         {/* Header */}
                         <div className="p-6 border-b border-white/10 flex items-center justify-between bg-black/20">
                             <div>
                                 <h2 className="text-sm font-bold uppercase tracking-widest text-white/90">Art Director</h2>
                                 <p className="text-[10px] text-white/50 mt-1">
-                                    {isCoverSelected ? 'Editing: FRONT COVER' : 'Editing: CHAPTER SCENE'}
+                                    {isCoverSelected ? 'Editing: FRONT COVER' : 'Editing: MANUSCRIPT SCENE'}
                                 </p>
                             </div>
                             <Wand2 className="text-amber-400 w-5 h-5" />
@@ -214,7 +216,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                     value={promptText}
                                     onChange={(e) => setPromptText(e.target.value)}
                                     className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-4 text-sm leading-relaxed text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50 resize-none transition-all"
-                                    placeholder={isCoverSelected ? "Describe the book cover..." : "Describe the chapter scene..."}
+                                    placeholder={isCoverSelected ? "Describe the book cover..." : "Describe the scene..."}
                                 />
                                 <div className="flex flex-wrap gap-2">
                                     {['Cinematic', 'Noir', 'Wide Shot', 'Detail'].map(style => (
@@ -270,11 +272,11 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 <div className="grid grid-cols-2 gap-4 text-[10px] text-white/50">
                                     <div>
                                         <span className="block text-white/30">Ratio</span>
-                                        {isCoverSelected ? '2:3 (Portrait)' : '16:5 (Banner)'}
+                                        {isCoverSelected ? '2:3 (Portrait)' : '16:3 (Wide)'}
                                     </div>
                                     <div>
                                         <span className="block text-white/30">Engine</span>
-                                        Pollinations (Flux)
+                                        OpenRouter Flux
                                     </div>
                                 </div>
                             </div>
