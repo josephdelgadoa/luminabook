@@ -164,19 +164,32 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
 export const generateImage = async (prompt: string, width: number = 1024, height: number = 1024): Promise<string> => {
     try {
         const client = getClient();
-        console.log("Generating image via OpenRouter (Flux-Schnell)...", { prompt, width, height });
+        console.log("Generating image via OpenRouter (Chat Endpoint)...", { model: "black-forest-labs/flux-1-schnell" });
 
-        const response = await client.images.generate({
+        // OpenRouter uses the Chat API for images
+        const completion = await client.chat.completions.create({
             model: "black-forest-labs/flux-1-schnell",
-            prompt: prompt,
-            // OpenRouter/Flux often ignores these or requires standard sizes.
-            // We'll pass standard 1024x1024 to ensure compatibility unless specific aspect support is verified.
-            // size: "1024x1024", 
-            n: 1,
+            messages: [
+                { role: "user", content: prompt }
+            ],
         });
 
-        const url = response.data?.[0]?.url;
-        if (!url) throw new Error("No image URL returned");
+        const content = completion.choices[0]?.message?.content || "";
+
+        // Robust URL extraction
+        // Regex to find http/https links
+        const urlMatch = content.match(/https?:\/\/[^\s)]+/) || content.match(/\((.*?)\)/);
+        let url = urlMatch ? urlMatch[0].replace('(', '').replace(')', '') : content;
+
+        // Cleanup if markdown link
+        if (url.includes('](')) {
+            url = url.split('](')[1].replace(')', '');
+        }
+
+        if (!url || !url.startsWith('http')) {
+            console.log("Raw content returned:", content);
+            throw new Error("No valid image URL found in chat response");
+        }
 
         return url;
     } catch (e) {
