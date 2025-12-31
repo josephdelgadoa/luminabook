@@ -63,8 +63,34 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
     const titleY = fmt.height * 0.4;
     doc.text(titleLines, fmt.width / 2, titleY, { align: 'center' });
 
+    // Note: User requested Author Info on a different page.
+    // We only keep the Title on the graphical cover.
+
+    // --- PAGE 2: TITLE PAGE (Title + Author) ---
+    doc.addPage();
+    doc.setTextColor(0, 0, 0); // Reset text to black
+
+    // Vertical center for Title Page content
+    let tpCursorY = fmt.height * 0.35;
+
+    // Title Again
+    doc.setFont("times", "bold");
+    doc.setFontSize(fmt.fontSize.title);
+    doc.text(titleLines, fmt.width / 2, tpCursorY, { align: 'center' });
+
+    tpCursorY += (titleLines.length * 10) + 20;
+
+    // Author
+    doc.setFont("times", "italic");
     doc.setFontSize(fmt.fontSize.chapter);
-    doc.text(book.author || "Joseph Delgado", fmt.width / 2, titleY + 20, { align: 'center' });
+    doc.text(`by ${book.author || "Joseph Delgado"}`, fmt.width / 2, tpCursorY, { align: 'center' });
+
+    // Optional Publisher Mark
+    tpCursorY += 40;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(100, 100, 100);
+    doc.text("LuminaBook Press Edition", fmt.width / 2, fmt.height - marginBottom, { align: 'center' });
 
 
     // --- CONTENT PAGES ---

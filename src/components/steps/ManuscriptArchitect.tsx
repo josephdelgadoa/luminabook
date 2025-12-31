@@ -39,7 +39,20 @@ export const ManuscriptArchitect: React.FC<ManuscriptArchitectProps> = ({ book, 
         const chapterNum = previousChapters?.length || (index + 1);
 
         const labelStr = language === 'es' ? 'Capítulo' : 'Chapter';
-        return `${labelStr} ${chapterNum}`;
+        const fullLabel = `${labelStr} ${chapterNum}`;
+
+        // Deduplication: If title already contains "Chapter X" or "Capítulo X", return null
+        // Normalize checking by removing punctuation and case
+        const normalizedTitle = title.toLowerCase().replace(/[:.]/g, '');
+        const normalizedLabel = fullLabel.toLowerCase();
+
+        if (normalizedTitle.includes(normalizedLabel) ||
+            normalizedTitle.includes(`chapter ${chapterNum}`) ||
+            normalizedTitle.includes(`capítulo ${chapterNum}`)) {
+            return null;
+        }
+
+        return fullLabel;
     };
 
 
