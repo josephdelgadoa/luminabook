@@ -175,7 +175,7 @@ export const generateImage = async (prompt: string, width: number = 1024, height
             n: 1,
         });
 
-        const url = response.data[0]?.url;
+        const url = response.data?.[0]?.url;
         if (!url) throw new Error("No image URL returned");
 
         return url;
