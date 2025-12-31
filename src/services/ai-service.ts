@@ -1,19 +1,32 @@
 import type { EBook } from "../types";
 
-// OpenRouter API Configuration
-const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
+// OpenRouter/OpenAI API Configuration
+import OpenAI from "openai";
+
 const getApiKey = () => import.meta.env.VITE_OPENROUTER_API_KEY || '';
 
-export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'en'): Promise<Partial<EBook>> => {
-    console.log("Analyzing manuscript via OpenRouter (DeepSeek-V3)...");
+// Initialize OpenAI client pointing to OpenRouter
+const getClient = () => {
     const apiKey = getApiKey();
+    if (!apiKey) throw new Error("OpenRouter API Key is missing");
 
-    if (!apiKey) {
-        console.error("Missing OpenRouter API Key");
-        throw new Error("OpenRouter API Key is missing. Please check .env file.");
-    }
+    return new OpenAI({
+        baseURL: "https://openrouter.ai/api/v1",
+        apiKey: apiKey,
+        dangerouslyAllowBrowser: true, // Required for client-side usage
+        defaultHeaders: {
+            "HTTP-Referer": "https://luminabook.com", // Site URL for rankings
+            "X-Title": "Luminabook", // App name for rankings
+        }
+    });
+};
+
+export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'en'): Promise<Partial<EBook>> => {
+    console.log("Analyzing manuscript via OpenRouter (OpenAI SDK)...");
 
     try {
+        const client = getClient();
+
         const languageInstruction = language === 'es'
             ? "OUTPUT LANGUAGE: SPANISH (Español). ensure all titles, summaries, and descriptions are in Spanish."
             : "OUTPUT LANGUAGE: ENGLISH.";
@@ -48,35 +61,16 @@ export const analyzeManuscript = async (text: string, language: 'en' | 'es' = 'e
         Return ONLY raw JSON. No markdown backticks.
         `;
 
-        const userMessage = `INPUT TEXT:\n${text}`;
-
-        const response = await fetch(OPENROUTER_API_URL, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}`,
-                'HTTP-Referer': 'https://luminabook.com', // Required by OpenRouter
-                'X-Title': 'Luminabook' // Required by OpenRouter
-            },
-            body: JSON.stringify({
-                model: "deepseek/deepseek-chat",
-                messages: [
-                    { role: "system", content: systemPrompt },
-                    { role: "user", content: userMessage }
-                ],
-                stream: false
-            })
+        const completion = await client.chat.completions.create({
+            model: "deepseek/deepseek-chat", // Consistent High-Quality Model
+            messages: [
+                { role: "system", content: systemPrompt },
+                { role: "user", content: `INPUT TEXT:\n${text}` }
+            ],
+            response_format: { type: "json_object" } // DeepSeek supports JSON mode
         });
 
-        if (!response.ok) {
-            const errText = await response.text();
-            console.error("OpenRouter API Error:", response.status, errText);
-            throw new Error(`OpenRouter API Failed: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const content = data.choices[0]?.message?.content || "";
-
+        const content = completion.choices[0].message.content || "";
         console.log("AI Response received (truncated):", content.substring(0, 100));
 
         // Clean markdown if present
