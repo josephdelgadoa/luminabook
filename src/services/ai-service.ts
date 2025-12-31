@@ -1,3 +1,5 @@
+import type { EBook } from "../types";
+
 // DeepSeek API Configuration
 const DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions";
 const getApiKey = () => import.meta.env.VITE_DEEPSEEK_API_KEY || '';
