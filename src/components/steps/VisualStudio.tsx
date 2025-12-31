@@ -16,7 +16,7 @@ interface VisualStudioProps {
 
 export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => {
     // State
-    const [selectedSectionId, setSelectedSectionId] = useState<string | 'cover'>('cover');
+    const [selectedSectionId, setSelectedSectionId] = useState<string | 'cover' | 'back-cover'>('cover');
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [promptText, setPromptText] = useState("");
@@ -24,6 +24,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
 
     // Derived Selectors
     const isCoverSelected = selectedSectionId === 'cover';
+    const isBackCoverSelected = selectedSectionId === 'back-cover';
     const selectedChapterIndex = book.chapters?.findIndex(c => c.id === selectedSectionId) ?? -1;
     const selectedChapter = selectedChapterIndex >= 0 ? book.chapters?.[selectedChapterIndex] : null;
 
@@ -31,23 +32,27 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     React.useEffect(() => {
         if (isCoverSelected) {
             setPromptText(book.coverImagePrompt || `Epic cinematic book cover for "${book.title}". Highly detailed, 8k resolution.`);
+        } else if (isBackCoverSelected) {
+            setPromptText(book.backCoverImagePrompt || `Atmospheric background for back cover of "${book.title}". Minimalist, texture-focused.`);
         } else if (selectedChapter) {
             setPromptText(selectedChapter.imagePrompt || `Wide cinematic shot for ${selectedChapter.title}. Panoramic, detailed.`);
         }
-    }, [selectedSectionId, book.coverImagePrompt, selectedChapter?.imagePrompt]);
+    }, [selectedSectionId, book.coverImagePrompt, book.backCoverImagePrompt, selectedChapter?.imagePrompt]);
 
     const handleGenerate = async () => {
         setIsGenerating(true);
         setError(null);
 
         try {
-            const styleSuffix = isCoverSelected ? "" : ", cinematic panoramic, wide aspect ratio";
+            const styleSuffix = (isCoverSelected || isBackCoverSelected) ? "" : ", cinematic panoramic, wide aspect ratio";
             const finalPrompt = promptText + (promptText.includes('aspect') ? '' : styleSuffix);
 
             const url = await generateImage(finalPrompt);
 
             if (isCoverSelected) {
                 setBook({ ...book, coverImageUrl: url, coverImagePrompt: promptText });
+            } else if (isBackCoverSelected) {
+                setBook({ ...book, backCoverImageUrl: url, backCoverImagePrompt: promptText });
             } else if (selectedChapter) {
                 const newChapters = [...(book.chapters || [])];
                 newChapters[selectedChapterIndex] = {
@@ -65,7 +70,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     };
 
     // Rendering Helpers
-    const activeImage = isCoverSelected ? book.coverImageUrl : selectedChapter?.imageUrl;
+    const activeImage = isCoverSelected ? book.coverImageUrl : (isBackCoverSelected ? book.backCoverImageUrl : selectedChapter?.imageUrl);
 
     return (
         <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden rounded-2xl border border-white/10 shadow-2xl relative">
@@ -75,9 +80,9 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                 {/* Paper Ambient Texture */}
                 <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pointer-events-none fixed" />
 
-                <div className="max-w-4xl mx-auto min-h-full pb-32 pt-12 px-4 md:px-12 relative z-10">
+                <div className="max-w-4xl mx-auto min-h-full pb-32 pt-12 px-4 md:px-12 relative z-10 transition-all">
 
-                    {/* --- 1. COVER SECTION (Distinct) --- */}
+                    {/* --- 1. FRONT COVER (Distinct) --- */}
                     <div
                         onClick={() => setSelectedSectionId('cover')}
                         className={`relative group cursor-pointer transition-all duration-300 shadow-2xl mb-16 rounded-sm overflow-hidden ${isCoverSelected ? 'ring-4 ring-amber-500' : 'hover:ring-2 hover:ring-indigo-500/30'}`}
@@ -116,7 +121,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     </div>
 
                     {/* --- 2. BOOK CONTENT (Paper Style) --- */}
-                    <div className="space-y-16">
+                    <div className="space-y-16 mb-16">
                         {book.chapters?.map((chapter, index) => {
                             const isSelected = selectedSectionId === chapter.id;
 
@@ -137,7 +142,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                         ) : (
                                             <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
                                                 <ImageIcon size={32} />
-                                                <span className="text-[10px] uppercase tracking-widest mt-2">16:3 Visual Scenery</span>
+                                                <span className="text-[10px] uppercase tracking-widest mt-2">{chapter.title.includes('Intro') ? 'Introduction Scenery' : '16:3 Visual Scenery'}</span>
                                             </div>
                                         )}
 
@@ -165,6 +170,53 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 </div>
                             );
                         })}
+
+                        {/* Empty Chapter Hint */}
+                        {(!book.chapters || book.chapters.length === 0) && (
+                            <div className="text-center p-12 text-slate-400 font-serif italic border-2 border-dashed border-slate-300 rounded-xl">
+                                No chapters found. Go back to Manuscript to generate or create chapters.
+                            </div>
+                        )}
+                    </div>
+
+                    {/* --- 3. BACK COVER (New) --- */}
+                    <div
+                        onClick={() => setSelectedSectionId('back-cover')}
+                        className={`relative group cursor-pointer transition-all duration-300 shadow-2xl rounded-sm overflow-hidden ${isBackCoverSelected ? 'ring-4 ring-amber-500' : 'hover:ring-2 hover:ring-indigo-500/30'}`}
+                    >
+                        {/* Wrapper for Back Cover Visual - Matches Front Cover Aspect */}
+                        <div className="relative w-full aspect-[2/3] lg:aspect-[16/9] lg:h-[70vh] bg-slate-900 border border-t border-white/5">
+                            {book.backCoverImageUrl ? (
+                                <img src={book.backCoverImageUrl} alt="Back Cover" className="w-full h-full object-cover opacity-60" />
+                            ) : (
+                                <div className="absolute inset-0 bg-neutral-900 opacity-90 transition-opacity" />
+                            )}
+
+                            {/* Back Cover Content Overlay (Blurb) */}
+                            <div className="absolute inset-0 flex flex-col items-center justify-center p-16 lg:p-24 text-center">
+                                <div className="max-w-2xl backdrop-blur-md p-10 rounded-xl border border-white/10 bg-black/40 shadow-2xl">
+                                    <h3 className="font-sans text-xs tracking-[0.3em] uppercase text-amber-500 mb-6 border-b border-white/10 pb-4 inline-block">About the Book</h3>
+
+                                    <p className="font-serif text-white/90 text-lg leading-loose italic">
+                                        {book.description || "Enter a compelling description for your book here..."}
+                                    </p>
+
+                                    <div className="mt-12 flex flex-col items-center justify-center opacity-80 gap-3">
+                                        {/* Barcode Mockup */}
+                                        <div className="h-10 w-48 bg-white flex items-center justify-center p-1 rounded-sm">
+                                            <div className="w-full h-full bg-[url('https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/EAN13.svg/1200px-EAN13.svg.png')] bg-cover bg-center" />
+                                        </div>
+                                        <span className="text-[10px] text-white/50 tracking-widest font-mono">LUMINABOOK PRESS</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {isBackCoverSelected && (
+                            <div className="absolute top-4 right-4 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-lg z-10">
+                                <Wand2 size={12} /> EDITING BACK COVER
+                            </div>
+                        )}
                     </div>
 
                     {/* End of Book Marker */}
@@ -197,7 +249,9 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                             <div>
                                 <h2 className="text-sm font-bold uppercase tracking-widest text-white/90">Art Director</h2>
                                 <p className="text-[10px] text-white/50 mt-1">
-                                    {isCoverSelected ? 'Editing: FRONT COVER' : 'Editing: MANUSCRIPT SCENE'}
+                                    {isCoverSelected ? 'Editing: FRONT COVER' :
+                                        isBackCoverSelected ? 'Editing: BACK COVER' :
+                                            'Editing: MANUSCRIPT SCENE'}
                                 </p>
                             </div>
                             <Wand2 className="text-amber-400 w-5 h-5" />
@@ -216,7 +270,11 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                     value={promptText}
                                     onChange={(e) => setPromptText(e.target.value)}
                                     className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-4 text-sm leading-relaxed text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50 resize-none transition-all"
-                                    placeholder={isCoverSelected ? "Describe the book cover..." : "Describe the scene..."}
+                                    placeholder={
+                                        isCoverSelected ? "Describe the front cover..." :
+                                            isBackCoverSelected ? "Describe the back cover mood..." :
+                                                "Describe the scene..."
+                                    }
                                 />
                                 <div className="flex flex-wrap gap-2">
                                     {['Cinematic', 'Noir', 'Wide Shot', 'Detail'].map(style => (
@@ -272,7 +330,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 <div className="grid grid-cols-2 gap-4 text-[10px] text-white/50">
                                     <div>
                                         <span className="block text-white/30">Ratio</span>
-                                        {isCoverSelected ? '2:3 (Portrait)' : '16:3 (Wide)'}
+                                        {isCoverSelected || isBackCoverSelected ? '2:3 (Portrait)' : '16:3 (Wide)'}
                                     </div>
                                     <div>
                                         <span className="block text-white/30">Engine</span>
