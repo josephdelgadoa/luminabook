@@ -105,7 +105,6 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
         doc.setFontSize(fmt.fontSize.body);
         doc.setFont("times", "normal"); // Times New Roman is standard for books
 
-        const textWidth = fmt.width - (marginX * 2);
         const splitText = doc.splitTextToSize(chapter.content, textWidth);
 
         // Pagination Loop
