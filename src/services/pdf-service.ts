@@ -88,8 +88,18 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
         }
 
         doc.setFontSize(fmt.fontSize.title);
-        doc.text(chapter.title, marginX, cursorY);
-        cursorY += 15;
+
+        const textWidth = fmt.width - (marginX * 2);
+        const titleLines = doc.splitTextToSize(chapter.title, textWidth);
+
+        // Check if title fits, else add page (unlikely for title alone but good practice)
+        if (cursorY + (titleLines.length * 10) > fmt.height - marginBottom) {
+            doc.addPage();
+            cursorY = marginTop;
+        }
+
+        doc.text(titleLines, marginX, cursorY);
+        cursorY += (titleLines.length * 10) + 5; // Add dynamic spacing based on title height
 
         // Chapter Body
         doc.setFontSize(fmt.fontSize.body);
