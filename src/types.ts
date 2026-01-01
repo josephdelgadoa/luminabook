@@ -20,6 +20,8 @@ export interface BookTheme {
 export interface EBook {
     title: string;
     author: string;
+    authorBio?: string;
+    authorImageUrl?: string;
     description: string;
     coverImagePrompt?: string;
     coverImageUrl?: string;

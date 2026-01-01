@@ -6,7 +6,7 @@ import {
     Maximize2, Minimize2,
     Wand2, Layers, Type,
     RefreshCw, AlertCircle, CheckCircle2, Image as ImageIcon,
-    BookOpen
+    BookOpen, User
 } from 'lucide-react';
 
 interface VisualStudioProps {
@@ -16,7 +16,7 @@ interface VisualStudioProps {
 
 export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => {
     // State
-    const [selectedSectionId, setSelectedSectionId] = useState<string | 'cover' | 'back-cover'>('cover');
+    const [selectedSectionId, setSelectedSectionId] = useState<string | 'cover' | 'back-cover' | 'author-info'>('cover');
     const [isGenerating, setIsGenerating] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const [promptText, setPromptText] = useState("");
@@ -25,6 +25,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     // Derived Selectors
     const isCoverSelected = selectedSectionId === 'cover';
     const isBackCoverSelected = selectedSectionId === 'back-cover';
+    const isAuthorInfoSelected = selectedSectionId === 'author-info';
     const selectedChapterIndex = book.chapters?.findIndex(c => c.id === selectedSectionId) ?? -1;
     const selectedChapter = selectedChapterIndex >= 0 ? book.chapters?.[selectedChapterIndex] : null;
 
@@ -34,6 +35,8 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
             setPromptText(book.coverImagePrompt || `Epic cinematic book cover for "${book.title}". Highly detailed, 8k resolution.`);
         } else if (isBackCoverSelected) {
             setPromptText(book.backCoverImagePrompt || `Atmospheric background for back cover of "${book.title}". Minimalist, texture-focused.`);
+        } else if (isAuthorInfoSelected) {
+            setPromptText(`Professional author portrait of ${book.author || 'the author'}. B&W photography, elegant lighting.`);
         } else if (selectedChapter) {
             setPromptText(selectedChapter.imagePrompt || `Wide cinematic shot for ${selectedChapter.title}. Panoramic, detailed.`);
         }
@@ -44,7 +47,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
         setError(null);
 
         try {
-            const styleSuffix = (isCoverSelected || isBackCoverSelected) ? "" : ", cinematic panoramic, wide aspect ratio";
+            const styleSuffix = (isCoverSelected || isBackCoverSelected || isAuthorInfoSelected) ? "" : ", cinematic panoramic, wide aspect ratio";
             const finalPrompt = promptText + (promptText.includes('aspect') ? '' : styleSuffix);
 
             const url = await generateImage(finalPrompt);
@@ -53,6 +56,8 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                 setBook({ ...book, coverImageUrl: url, coverImagePrompt: promptText });
             } else if (isBackCoverSelected) {
                 setBook({ ...book, backCoverImageUrl: url, backCoverImagePrompt: promptText });
+            } else if (isAuthorInfoSelected) {
+                setBook({ ...book, authorImageUrl: url });
             } else if (selectedChapter) {
                 const newChapters = [...(book.chapters || [])];
                 newChapters[selectedChapterIndex] = {
@@ -70,7 +75,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     };
 
     // Rendering Helpers
-    const activeImage = isCoverSelected ? book.coverImageUrl : (isBackCoverSelected ? book.backCoverImageUrl : selectedChapter?.imageUrl);
+    const activeImage = isCoverSelected ? book.coverImageUrl : (isBackCoverSelected ? book.backCoverImageUrl : (isAuthorInfoSelected ? book.authorImageUrl : selectedChapter?.imageUrl));
 
     return (
         <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden rounded-2xl border border-white/10 shadow-2xl relative">
@@ -120,7 +125,38 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         )}
                     </div>
 
-                    {/* --- 2. BOOK CONTENT (Paper Style) --- */}
+                    {/* --- 2. AUTHOR INFO (New) --- */}
+                    <div
+                        onClick={() => setSelectedSectionId('author-info')}
+                        className={`relative bg-white shadow-xl rounded-sm overflow-hidden transition-all duration-300 border mb-16 p-12 lg:p-20 text-center flex flex-col items-center justify-center min-h-[60vh] ${isAuthorInfoSelected ? 'border-amber-500 ring-4 ring-amber-500/20' : 'border-slate-200 hover:border-indigo-300'}`}
+                    >
+                        <div className="w-32 h-32 lg:w-48 lg:h-48 rounded-full overflow-hidden mb-8 shadow-2xl border-4 border-white ring-1 ring-slate-200 relative bg-slate-100 group">
+                            {book.authorImageUrl ? (
+                                <img src={book.authorImageUrl} alt="Author" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                    <User size={64} />
+                                </div>
+                            )}
+                        </div>
+
+                        <h2 className="font-serif text-3xl font-bold text-slate-900 mb-2">{book.author || "Author Info"}</h2>
+                        <span className="text-xs font-sans tracking-[0.2em] text-slate-400 uppercase mb-8">About the Author</span>
+
+                        <div className="max-w-md mx-auto text-slate-600 font-serif text-lg leading-relaxed italic">
+                            <p>
+                                {book.authorBio || "Joseph Delgado is a visionary creator exploring the intersection of art and technology. This book represents a journey into the imagination."}
+                            </p>
+                        </div>
+
+                        {isAuthorInfoSelected && (
+                            <div className="absolute top-4 right-4 bg-amber-500 text-black text-xs font-bold px-3 py-1 rounded-full flex items-center gap-2 shadow-lg z-10">
+                                <Wand2 size={12} /> EDITING AUTHOR INFO
+                            </div>
+                        )}
+                    </div>
+
+                    {/* --- 3. BOOK CONTENT (Paper Style) --- */}
                     <div className="space-y-16 mb-16">
                         {book.chapters?.map((chapter, index) => {
                             const isSelected = selectedSectionId === chapter.id;
@@ -196,7 +232,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         )}
                     </div>
 
-                    {/* --- 3. BACK COVER (New) --- */}
+                    {/* --- 4. BACK COVER (New) --- */}
                     <div
                         onClick={() => setSelectedSectionId('back-cover')}
                         className={`relative group cursor-pointer transition-all duration-300 shadow-2xl rounded-sm overflow-hidden ${isBackCoverSelected ? 'ring-4 ring-amber-500' : 'hover:ring-2 hover:ring-indigo-500/30'}`}
@@ -267,8 +303,9 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 <h2 className="text-sm font-bold uppercase tracking-widest text-white/90">Art Director</h2>
                                 <p className="text-[10px] text-white/50 mt-1">
                                     {isCoverSelected ? 'Editing: FRONT COVER' :
-                                        isBackCoverSelected ? 'Editing: BACK COVER' :
-                                            'Editing: MANUSCRIPT SCENE'}
+                                        isAuthorInfoSelected ? 'Editing: AUTHOR INFO' :
+                                            isBackCoverSelected ? 'Editing: BACK COVER' :
+                                                'Editing: MANUSCRIPT SCENE'}
                                 </p>
                             </div>
                             <Wand2 className="text-amber-400 w-5 h-5" />
@@ -289,8 +326,9 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                     className="w-full h-32 bg-white/5 border border-white/10 rounded-lg p-4 text-sm leading-relaxed text-white placeholder-white/20 focus:outline-none focus:border-amber-500/50 resize-none transition-all"
                                     placeholder={
                                         isCoverSelected ? "Describe the front cover..." :
-                                            isBackCoverSelected ? "Describe the back cover mood..." :
-                                                "Describe the scene..."
+                                            isAuthorInfoSelected ? "Describe the author portrait..." :
+                                                isBackCoverSelected ? "Describe the back cover mood..." :
+                                                    "Describe the scene..."
                                     }
                                 />
                                 <div className="flex flex-wrap gap-2">
@@ -347,7 +385,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 <div className="grid grid-cols-2 gap-4 text-[10px] text-white/50">
                                     <div>
                                         <span className="block text-white/30">Ratio</span>
-                                        {isCoverSelected || isBackCoverSelected ? '2:3 (Portrait)' : '16:3 (Wide)'}
+                                        {isCoverSelected || isBackCoverSelected || isAuthorInfoSelected ? '2:3 (Portrait)' : '16:3 (Wide)'}
                                     </div>
                                     <div>
                                         <span className="block text-white/30">Engine</span>
