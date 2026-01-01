@@ -67,30 +67,22 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
         format: [fmt.width, fmt.height]
     });
 
-    // --- 1. COVER PAGE (Pro Design Rules) ---
+    // --- 1. FRONT COVER PAGE ---
     const coverImage = await loadImage(book.coverImageUrl || "");
 
     if (coverImage) {
-        // Rule: Full Bleed Image
         doc.addImage(coverImage, 'JPEG', 0, 0, fmt.width, fmt.height);
 
-        // Rule: Gradient Overlay / "Negative Space" Technique
-        // We darken the top 35% significantly to create a "safe zone" for the title.
-        // And the bottom 20% for the author name.
-
+        // Gradient & Overlays
         doc.saveGraphicsState();
-        // Top Dark Zone (for Title) - 70% Opacity
         doc.setGState(new (doc as any).GState({ opacity: 0.7 }));
         doc.setFillColor(0, 0, 0);
-        doc.rect(0, 0, fmt.width, fmt.height * 0.35, 'F');
+        doc.rect(0, 0, fmt.width, fmt.height * 0.35, 'F'); // Top Dark
 
-        // Bottom Dark Zone (for Author) - 60% Opacity
         doc.setGState(new (doc as any).GState({ opacity: 0.6 }));
-        doc.rect(0, fmt.height * 0.8, fmt.width, fmt.height * 0.2, 'F');
-
+        doc.rect(0, fmt.height * 0.8, fmt.width, fmt.height * 0.2, 'F'); // Bottom Dark
         doc.restoreGraphicsState();
     } else {
-        // Fallback Dark Background
         doc.setFillColor(15, 23, 42);
         doc.rect(0, 0, fmt.width, fmt.height, 'F');
     }
@@ -98,46 +90,37 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
     // Cover Typography
     doc.setTextColor(255, 255, 255);
     doc.setFont("times", "bold");
-
-    // Rule: Thumbnail Rule / Hierarchy
-    // Title should be ~25-40% of visual weight. We scale font size up.
     const titleSize = fmt.fontSize.title * 2.5;
     doc.setFontSize(titleSize);
 
     const titleLines = doc.splitTextToSize(book.title.toUpperCase(), fmt.width - (marginX * 2));
-    const titleY = fmt.height * 0.15; // Start 15% down (centered in top dark zone)
+    const titleY = fmt.height * 0.15;
 
-    // Rule: Soft Drop Shadow (No Stroke!)
-    // Simulate soft shadow by drawing at multiple offsets with low opacity
-    const shadowOffsets = [0.2, 0.4, 0.6, 0.8]; // mm offsets
+    // Soft Shadow
+    const shadowOffsets = [0.2, 0.4, 0.6, 0.8];
     doc.setTextColor(0, 0, 0);
-
     shadowOffsets.forEach(off => {
         doc.saveGraphicsState();
-        doc.setGState(new (doc as any).GState({ opacity: 0.25 })); // Low opacity per layer
+        doc.setGState(new (doc as any).GState({ opacity: 0.25 }));
         doc.text(titleLines, (fmt.width / 2) + off, titleY + off, { align: 'center' });
         doc.restoreGraphicsState();
     });
 
-    // Draw Main Title (Bright White)
     doc.setTextColor(255, 255, 255);
     doc.text(titleLines, fmt.width / 2, titleY, { align: 'center' });
 
-    // Author (Placed in Bottom Dark Zone)
-    doc.setFontSize(fmt.fontSize.title); // ~50% of title size
+    doc.setFontSize(fmt.fontSize.title);
     doc.setFont("times", "normal");
-    // Add slight spacing/tracking if possible (jspdf limits), but normal is fine.
     const authorY = fmt.height * 0.9;
     doc.text(book.author || "Author Name", fmt.width / 2, authorY, { align: 'center' });
 
-    // Tagline / Subtitle
     doc.setFontSize(10);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(200, 200, 200);
     doc.text("LuminaBook Edition", fmt.width / 2, authorY + 8, { align: 'center' });
 
 
-    // --- 2. TITLE PAGE (Standard) ---
+    // --- 2. TITLE PAGE ---
     doc.addPage();
     doc.setTextColor(0, 0, 0);
     let tpCursor = fmt.height * 0.4;
@@ -152,55 +135,87 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
     doc.text(`by ${book.author}`, fmt.width / 2, tpCursor, { align: 'center' });
 
 
-    // --- 3. CHAPTERS ---
+    // --- 3. AUTHOR INFO PAGE (New) ---
+    // Rule: Only add if image or bio exists
+    if (book.authorImageUrl || book.authorBio) {
+        doc.addPage();
+        let cursorY = marginTop;
+
+        // Author Portrait
+        const authorImg = await loadImage(book.authorImageUrl || "");
+        if (authorImg) {
+            // Circle mask is hard in PDF, so we do specific rectangle or just center it.
+            // Let's do a nice square frame centered.
+            const imgSize = 60; // mm
+            const xPos = (fmt.width - imgSize) / 2;
+            doc.addImage(authorImg, 'JPEG', xPos, cursorY, imgSize, imgSize);
+
+            // Frame
+            doc.setDrawColor(200, 200, 200);
+            doc.setLineWidth(0.5);
+            doc.rect(xPos, cursorY, imgSize, imgSize);
+
+            cursorY += imgSize + 15;
+        } else {
+            cursorY += 20;
+        }
+
+        doc.setFont("times", "bold");
+        doc.setFontSize(fmt.fontSize.title);
+        doc.text("About the Author", fmt.width / 2, cursorY, { align: 'center' });
+        cursorY += 15;
+
+        doc.setFont("times", "normal");
+        doc.setFontSize(fmt.fontSize.body);
+        const bioLines = doc.splitTextToSize(book.authorBio || "Author bio not provided.", fmt.width - (marginX * 3)); // Narrower for bio
+        doc.text(bioLines, fmt.width / 2, cursorY, { align: 'center' });
+    }
+
+
+    // --- 4. CHAPTERS ---
     const isSpanish = /cap[ií]tulo|introducc|pr[óo]l/i.test(JSON.stringify(book.chapters));
     const chapterWord = isSpanish ? "Capítulo" : "Chapter";
-
     let chapterCount = 0;
 
     for (const chapter of book.chapters) {
         doc.addPage();
         let cursorY = marginTop;
 
-        // 3.1 Chapter Image
+        // Chapter Banner Image
         const chapImg = await loadImage(chapter.imageUrl || "");
         if (chapImg) {
-            // Cinematic 2:1 aspect ratio at top of page
-            const imgHeight = (fmt.width - (marginX * 2)) / 2;
+            const imgHeight = (fmt.width - (marginX * 2)) / 3; // 16:3 Approx logic (wider)
             doc.addImage(chapImg, 'JPEG', marginX, cursorY, fmt.width - (marginX * 2), imgHeight);
             cursorY += imgHeight + 10;
         }
 
-        // 3.2 Smart Header Logic
+        // Smart Header Logic
         const isSpecial = /intro|prologue|prólogo|preface|prefacio/i.test(chapter.title);
 
         doc.setFont("helvetica", "bold");
         doc.setFontSize(fmt.fontSize.chapter);
-        doc.setTextColor(100, 100, 100); // Grey header
+        doc.setTextColor(100, 100, 100);
 
-        // Logic: Only add "Chapter X" if the title DOES NOT already start with it.
         if (!isSpecial) {
             chapterCount++;
-            // Normalize check
             const startsWithHeader = new RegExp(`^${chapterWord}`, 'i').test(chapter.title);
-
             if (!startsWithHeader) {
                 doc.text(`${chapterWord} ${chapterCount}`, marginX, cursorY);
                 cursorY += 8;
             }
         }
 
-        // 3.3 Chapter Title
+        // Chapter Title
         doc.setFont("times", "bold");
         doc.setFontSize(fmt.fontSize.title);
-        doc.setTextColor(0, 0, 0); // Black
+        doc.setTextColor(0, 0, 0);
 
         const cleanTitle = chapter.title;
         const titleLines = doc.splitTextToSize(cleanTitle, fmt.width - (marginX * 2));
         doc.text(titleLines, marginX, cursorY);
         cursorY += (titleLines.length * 10) + 10;
 
-        // 3.4 Content
+        // Content
         doc.setFont("times", "normal");
         doc.setFontSize(fmt.fontSize.body);
 
@@ -215,6 +230,61 @@ export const generatePDF = async (book: EBook, config: ExportConfig): Promise<vo
             cursorY += fmt.lineHeight;
         }
     }
+
+
+    // --- 5. BACK COVER PAGE (New) ---
+    const backCoverImg = await loadImage(book.backCoverImageUrl || "");
+
+    doc.addPage(); // Back Cover is a new page at the very end
+
+    if (backCoverImg) {
+        // Full Bleed
+        doc.addImage(backCoverImg, 'JPEG', 0, 0, fmt.width, fmt.height);
+
+        // Dark Overlay for Text readability
+        doc.saveGraphicsState();
+        doc.setGState(new (doc as any).GState({ opacity: 0.85 }));
+        doc.setFillColor(10, 10, 10);
+
+        // Central Box for Blurb
+        const boxW = fmt.width * 0.7;
+        const boxH = fmt.height * 0.5;
+        const boxX = (fmt.width - boxW) / 2;
+        const boxY = (fmt.height - boxH) / 2;
+
+        // Rounded rect workaround or just rect
+        doc.rect(boxX - 5, boxY - 5, boxW + 10, boxH + 10, 'F');
+        doc.restoreGraphicsState();
+    } else {
+        doc.setFillColor(20, 20, 20);
+        doc.rect(0, 0, fmt.width, fmt.height, 'F');
+    }
+
+    // Back Cover Content
+    doc.setTextColor(255, 255, 255);
+
+    // "About the Book"
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text("ABOUT THE BOOK", fmt.width / 2, (fmt.height * 0.3), { align: 'center' });
+
+    // Description/Blurb
+    doc.setFont("times", "italic");
+    doc.setFontSize(14);
+    const blurbStart = fmt.height * 0.35;
+    const blurbWidth = fmt.width * 0.6;
+    const blurbLines = doc.splitTextToSize(book.description || "No description available.", blurbWidth);
+
+    doc.text(blurbLines, fmt.width / 2, blurbStart, { align: 'center' });
+
+    // Barcode Simulation
+    const bottomY = fmt.height * 0.85;
+    doc.setFillColor(255, 255, 255);
+    doc.rect((fmt.width / 2) - 20, bottomY, 40, 15, 'F'); // White background for barcode
+    doc.setFont("courier", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(0, 0, 0);
+    doc.text("LUMINABOOK PRESS", fmt.width / 2, bottomY + 20, { align: 'center' });
 
     const safeTitle = (book.title || "book").replace(/[^a-z0-9]/gi, '_').toLowerCase();
     doc.save(`${safeTitle}_${formatKey}.pdf`);
