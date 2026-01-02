@@ -85,6 +85,27 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
         'a4': 'max-w-[850px]'      // 8.27 inches
     };
 
+    // Auto Font Adjustment based on Trim Size (requested by user)
+    const fontConfig = {
+        'pocket': {
+            body: 'text-base leading-relaxed',
+            title: 'text-3xl',
+            padding: 'p-8 lg:p-10'
+        },
+        'letter': {
+            body: 'text-lg leading-loose',
+            title: 'text-5xl',
+            padding: 'p-12 lg:p-16'
+        },
+        'a4': {
+            body: 'text-lg leading-loose',
+            title: 'text-5xl',
+            padding: 'p-12 lg:p-16'
+        }
+    };
+
+    const currentFont = fontConfig[pageSize];
+
     return (
         <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden rounded-2xl border border-white/10 shadow-2xl relative">
 
@@ -119,19 +140,19 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         onClick={() => setSelectedSectionId('cover')}
                         className={`relative group cursor-pointer transition-all duration-300 shadow-2xl mb-16 rounded-sm overflow-hidden ${isCoverSelected ? 'ring-4 ring-amber-500' : 'hover:ring-2 hover:ring-indigo-500/30'}`}
                     >
-                        {/* Wrapper to maintain aspect ratio */}
-                        <div className="relative w-full aspect-[2/3] lg:aspect-[16/9] lg:h-[70vh]">
+                        {/* Wrapper to maintain aspect ratio - Full Bleed Logic */}
+                        <div className="relative w-full aspect-[2/3] lg:aspect-[16/9] lg:h-[75vh]">
                             {book.coverImageUrl ? (
-                                <img src={book.coverImageUrl} alt="Cover" className="w-full h-full object-cover" />
+                                <img src={book.coverImageUrl} alt="Cover" className="absolute inset-0 w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-white/20">
+                                <div className="absolute inset-0 bg-slate-900 flex flex-col items-center justify-center text-white/20 group-hover:bg-slate-800 transition-colors">
                                     <ImageIcon size={64} strokeWidth={1} />
-                                    <p className="mt-4 text-xs tracking-widest uppercase">Cover Placeholder</p>
+                                    <p className="mt-4 text-xs tracking-widest uppercase">Tap to Generate Cover</p>
                                 </div>
                             )}
 
-                            {/* Cinematic Overlay */}
-                            <div className="absolute inset-0 flex flex-col justify-end p-12 bg-gradient-to-t from-black via-black/40 to-transparent">
+                            {/* Cinematic Overlay - Only text is overlaid, image is full background */}
+                            <div className="absolute inset-0 flex flex-col justify-end p-12 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none">
                                 <h1 className="font-serif text-5xl lg:text-7xl font-bold text-center text-white drop-shadow-2xl mb-8 leading-tight">
                                     {book.title || "Untitled Book"}
                                 </h1>
@@ -143,6 +164,15 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                     <div className="h-px w-32 bg-amber-500/50 mt-4 blur-[1px]" />
                                 </div>
                             </div>
+
+                            {/* Quick Action Button (Visible on Hover or Empty) */}
+                            {!book.coverImageUrl && (
+                                <div className="absolute inset-0 flex items-center justify-center z-20 pointer-events-none">
+                                    <div className="bg-amber-500 text-black px-6 py-3 rounded-full font-bold uppercase tracking-widest shadow-2xl flex items-center gap-2 animate-pulse">
+                                        <Wand2 size={16} /> Generate Cover
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {isCoverSelected && (
@@ -155,22 +185,27 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                     {/* --- 2. AUTHOR INFO (New) --- */}
                     <div
                         onClick={() => setSelectedSectionId('author-info')}
-                        className={`relative bg-white shadow-xl rounded-sm overflow-hidden transition-all duration-300 border mb-16 p-12 lg:p-20 text-center flex flex-col items-center justify-center min-h-[60vh] ${isAuthorInfoSelected ? 'border-amber-500 ring-4 ring-amber-500/20' : 'border-slate-200 hover:border-indigo-300'}`}
+                        className={`relative bg-white shadow-xl rounded-sm overflow-hidden transition-all duration-300 border mb-16 ${currentFont.padding} text-center flex flex-col items-center justify-center min-h-[60vh] ${isAuthorInfoSelected ? 'border-amber-500 ring-4 ring-amber-500/20' : 'border-slate-200 hover:border-indigo-300'}`}
                     >
-                        <div className="w-32 h-32 lg:w-48 lg:h-48 rounded-full overflow-hidden mb-8 shadow-2xl border-4 border-white ring-1 ring-slate-200 relative bg-slate-100 group">
+                        <div className="w-32 h-32 lg:w-48 lg:h-48 rounded-full overflow-hidden mb-8 shadow-2xl border-4 border-white ring-1 ring-slate-200 relative bg-slate-100 group cursor-pointer hover:ring-amber-500/50 transition-all">
                             {book.authorImageUrl ? (
                                 <img src={book.authorImageUrl} alt="Author" className="w-full h-full object-cover" />
                             ) : (
-                                <div className="w-full h-full flex items-center justify-center text-slate-300">
+                                <div className="w-full h-full flex items-center justify-center text-slate-300 bg-slate-50 group-hover:bg-slate-100 transition-colors">
                                     <User size={64} />
                                 </div>
                             )}
+
+                            {/* Hover Hint */}
+                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Wand2 className="text-white" size={24} />
+                            </div>
                         </div>
 
                         <h2 className="font-serif text-3xl font-bold text-slate-900 mb-2">{book.author || "Author Info"}</h2>
                         <span className="text-xs font-sans tracking-[0.2em] text-slate-400 uppercase mb-8">About the Author</span>
 
-                        <div className="max-w-md mx-auto text-slate-600 font-serif text-lg leading-relaxed italic">
+                        <div className={`max-w-md mx-auto text-slate-600 font-serif leading-relaxed italic ${currentFont.body}`}>
                             <p>
                                 {book.authorBio || "Joseph Delgado is a visionary creator exploring the intersection of art and technology. This book represents a journey into the imagination."}
                             </p>
@@ -199,11 +234,11 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                     className={`relative bg-white shadow-xl rounded-sm overflow-hidden transition-all duration-300 border ${isSelected ? 'border-amber-500 ring-4 ring-amber-500/20' : 'border-slate-200 hover:border-indigo-300'}`}
                                 >
                                     {/* 16:3 Aspect Ratio Image Banner (Requested) */}
-                                    <div className="relative w-full aspect-[16/3] bg-slate-100 overflow-hidden group border-b border-slate-100">
+                                    <div className="relative w-full aspect-[16/3] bg-slate-100 overflow-hidden group border-b border-slate-100 cursor-pointer">
                                         {chapter.imageUrl ? (
                                             <img src={chapter.imageUrl} alt={chapter.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                                         ) : (
-                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300">
+                                            <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 bg-slate-50 group-hover:bg-slate-100">
                                                 <ImageIcon size={32} />
                                                 <span className="text-[10px] uppercase tracking-widest mt-2">{chapter.title.includes('Intro') ? 'Introduction Scenery' : '16:3 Visual Scenery'}</span>
                                             </div>
@@ -215,10 +250,19 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                                 <Wand2 size={12} /> EDITING
                                             </div>
                                         )}
+
+                                        {/* Hover Overlay for Easy Gen */}
+                                        {!chapter.imageUrl && (
+                                            <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-black/10">
+                                                <div className="bg-white/90 backdrop-blur text-black px-4 py-2 rounded-full font-bold text-xs shadow-lg flex items-center gap-2">
+                                                    <Wand2 size={12} /> Generate Scene
+                                                </div>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    {/* Manuscript Paper Content */}
-                                    <div className="p-12 lg:p-16">
+                                    {/* Manuscript Paper Content - Auto Font Adjusted */}
+                                    <div className={`${currentFont.padding}`}>
                                         {(() => {
                                             // Smart Title Logic
                                             const isIntro = (t: string) => /intro|prologue|prólogo|preface|prefacio/i.test(t);
@@ -234,13 +278,13 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                             }
 
                                             return (
-                                                <h2 className="font-serif text-3xl font-bold text-slate-900 mb-8 pb-4 border-b border-slate-900/10">
+                                                <h2 className={`font-serif font-bold text-slate-900 mb-8 pb-4 border-b border-slate-900/10 ${currentFont.title}`}>
                                                     {displayTitle}
                                                 </h2>
                                             );
                                         })()}
 
-                                        <div className="text-slate-700 leading-loose font-serif text-lg space-y-6 max-w-none text-justify">
+                                        <div className={`text-slate-700 font-serif space-y-6 max-w-none text-justify ${currentFont.body}`}>
                                             {chapter.content?.split('\n').map((para, i) => (
                                                 para.trim() && <p key={i}>{para.trim()}</p>
                                             ))}
@@ -265,9 +309,9 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                         className={`relative group cursor-pointer transition-all duration-300 shadow-2xl rounded-sm overflow-hidden ${isBackCoverSelected ? 'ring-4 ring-amber-500' : 'hover:ring-2 hover:ring-indigo-500/30'}`}
                     >
                         {/* Wrapper for Back Cover Visual - Matches Front Cover Aspect */}
-                        <div className="relative w-full aspect-[2/3] lg:aspect-[16/9] lg:h-[70vh] bg-slate-900 border border-t border-white/5">
+                        <div className="relative w-full aspect-[2/3] lg:aspect-[16/9] lg:h-[75vh] bg-slate-900 border border-t border-white/5">
                             {book.backCoverImageUrl ? (
-                                <img src={book.backCoverImageUrl} alt="Back Cover" className="w-full h-full object-cover opacity-60" />
+                                <img src={book.backCoverImageUrl} alt="Back Cover" className="absolute inset-0 w-full h-full object-cover opacity-60" />
                             ) : (
                                 <div className="absolute inset-0 bg-neutral-900 opacity-90 transition-opacity" />
                             )}
