@@ -6,7 +6,7 @@ import {
     Maximize2, Minimize2,
     Wand2, Layers, Type,
     RefreshCw, AlertCircle, CheckCircle2, Image as ImageIcon,
-    BookOpen, User, Ratio, FileText
+    BookOpen, User, Ratio
 } from 'lucide-react';
 
 interface VisualStudioProps {
