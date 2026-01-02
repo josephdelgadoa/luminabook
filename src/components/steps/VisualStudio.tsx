@@ -88,28 +88,28 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     // Cover Configuration based on Trim Size (Specs provided by user)
     const coverConfig = {
         'pocket': {
-            titleSize: 'text-5xl lg:text-7xl leading-tight',
+            titleSize: 'text-[24px] font-condensed leading-tight', // 24px Requested
             titleTracking: 'tracking-tight',
-            authorSize: 'text-2xl tracking-wide',
-            layout: 'justify-start pt-24', // Stacked at top
+            authorSize: 'text-sm tracking-wide',
+            layout: 'justify-start pt-12', // Stacked at top
             gradient: 'from-black/90 via-black/40 to-transparent h-1/2', // Deep top gradient
-            shadow: 'drop-shadow-xl'
+            shadow: 'drop-shadow-md'
         },
         'letter': {
-            titleSize: 'text-6xl lg:text-8xl leading-none',
+            titleSize: 'text-[34px] leading-tight', // 34px Requested
             titleTracking: 'tracking-[0.2em]', // Spaced out
-            authorSize: 'text-3xl tracking-[0.1em]',
+            authorSize: 'text-lg tracking-[0.1em]',
             layout: 'justify-center', // Centered usually, or top. User said "Top or Centered". Let's go Top-Center dominant.
             gradient: 'from-black/80 via-black/20 to-transparent h-1/3',
-            shadow: 'drop-shadow-2xl'
+            shadow: 'drop-shadow-lg'
         },
         'a4': {
-            titleSize: 'text-6xl lg:text-8xl leading-none',
+            titleSize: 'text-[34px] leading-tight', // 34px Requested
             titleTracking: 'tracking-normal', // Standard
-            authorSize: 'text-4xl tracking-wider',
-            layout: 'justify-start pt-32', // Floating in negative space
+            authorSize: 'text-lg tracking-wider',
+            layout: 'justify-start pt-16', // Floating in negative space
             gradient: 'from-black/80 via-black/20 to-transparent h-1/3',
-            shadow: 'drop-shadow-2xl'
+            shadow: 'drop-shadow-lg'
         }
     };
 
