@@ -85,6 +85,36 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
         'a4': 'max-w-[850px]'      // 8.27 inches
     };
 
+    // Cover Configuration based on Trim Size (Specs provided by user)
+    const coverConfig = {
+        'pocket': {
+            titleSize: 'text-5xl lg:text-7xl leading-tight',
+            titleTracking: 'tracking-tight',
+            authorSize: 'text-2xl tracking-wide',
+            layout: 'justify-start pt-24', // Stacked at top
+            gradient: 'from-black/90 via-black/40 to-transparent h-1/2', // Deep top gradient
+            shadow: 'drop-shadow-xl'
+        },
+        'letter': {
+            titleSize: 'text-6xl lg:text-8xl leading-none',
+            titleTracking: 'tracking-[0.2em]', // Spaced out
+            authorSize: 'text-3xl tracking-[0.1em]',
+            layout: 'justify-center', // Centered usually, or top. User said "Top or Centered". Let's go Top-Center dominant.
+            gradient: 'from-black/80 via-black/20 to-transparent h-1/3',
+            shadow: 'drop-shadow-2xl'
+        },
+        'a4': {
+            titleSize: 'text-6xl lg:text-8xl leading-none',
+            titleTracking: 'tracking-normal', // Standard
+            authorSize: 'text-4xl tracking-wider',
+            layout: 'justify-start pt-32', // Floating in negative space
+            gradient: 'from-black/80 via-black/20 to-transparent h-1/3',
+            shadow: 'drop-shadow-2xl'
+        }
+    };
+
+    const currentCover = coverConfig[pageSize];
+
     // Auto Font Adjustment based on Trim Size (requested by user)
     const fontConfig = {
         'pocket': {
@@ -151,17 +181,24 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                 </div>
                             )}
 
-                            {/* Cinematic Overlay - Only text is overlaid, image is full background */}
-                            <div className="absolute inset-0 flex flex-col justify-end p-12 bg-gradient-to-t from-black via-black/40 to-transparent pointer-events-none">
-                                <h1 className="font-serif text-5xl lg:text-7xl font-bold text-center text-white drop-shadow-2xl mb-8 leading-tight">
-                                    {book.title || "Untitled Book"}
-                                </h1>
-                                <div className="flex flex-col items-center">
-                                    <div className="h-px w-32 bg-amber-500/50 mb-4 blur-[1px]" />
-                                    <p className="font-sans font-light text-amber-100/90 text-lg tracking-[0.4em] uppercase drop-shadow-md">
+                            {/* Cinematic Overlay - TOP TITLE placement as per specs */}
+                            <div className={`absolute inset-0 flex flex-col justify-between pointer-events-none`}>
+
+                                {/* Top Gradient & Title Area */}
+                                <div className={`w-full bg-gradient-to-b ${currentCover.gradient} flex flex-col items-center px-8 pt-12 pb-24`}>
+                                    <h1 className={`font-serif font-bold text-center text-white ${currentCover.shadow} ${currentCover.titleSize} ${currentCover.titleTracking}`}>
+                                        {book.title || "Untitled Book"}
+                                    </h1>
+                                    {/* Optional Subtitle if space permits, skipping for now to keep clean */}
+                                </div>
+
+                                {/* Bottom Gradient & Author Area */}
+                                <div className="w-full bg-gradient-to-t from-black/90 via-black/40 to-transparent flex flex-col items-center pb-12 pt-24 px-8">
+                                    <div className="h-px w-24 bg-amber-500/50 mb-4 blur-[1px]" />
+                                    <p className={`font-sans font-light text-amber-100/90 uppercase ${currentCover.shadow} ${currentCover.authorSize}`}>
                                         {book.author || "Joseph Delgado"}
                                     </p>
-                                    <div className="h-px w-32 bg-amber-500/50 mt-4 blur-[1px]" />
+                                    <div className="h-px w-24 bg-amber-500/50 mt-4 blur-[1px]" />
                                 </div>
                             </div>
 
