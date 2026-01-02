@@ -6,7 +6,7 @@ import {
     Maximize2, Minimize2,
     Wand2, Layers, Type,
     RefreshCw, AlertCircle, CheckCircle2, Image as ImageIcon,
-    BookOpen, User
+    BookOpen, User, Ratio, FileText
 } from 'lucide-react';
 
 interface VisualStudioProps {
@@ -21,6 +21,7 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     const [error, setError] = useState<string | null>(null);
     const [promptText, setPromptText] = useState("");
     const [showUI, setShowUI] = useState(true);
+    const [pageSize, setPageSize] = useState<'a4' | 'letter' | 'pocket'>('a4');
 
     // Derived Selectors
     const isCoverSelected = selectedSectionId === 'cover';
@@ -77,6 +78,13 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
     // Rendering Helpers
     const activeImage = isCoverSelected ? book.coverImageUrl : (isBackCoverSelected ? book.backCoverImageUrl : (isAuthorInfoSelected ? book.authorImageUrl : selectedChapter?.imageUrl));
 
+    // Dynamic styles for Trim Size
+    const containerWidthDetails = {
+        'pocket': 'max-w-[480px]', // 5 inches approx relative
+        'letter': 'max-w-4xl',     // 8.5 inches approx relative
+        'a4': 'max-w-[850px]'      // 8.27 inches
+    };
+
     return (
         <div className="flex h-full bg-[#0a0a0a] text-white overflow-hidden rounded-2xl border border-white/10 shadow-2xl relative">
 
@@ -85,7 +93,26 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                 {/* Paper Ambient Texture */}
                 <div className="absolute inset-0 opacity-[0.03] bg-[url('https://www.transparenttextures.com/patterns/cream-paper.png')] pointer-events-none fixed" />
 
-                <div className="max-w-4xl mx-auto min-h-full pb-32 pt-12 px-4 md:px-12 relative z-10 transition-all">
+                {/* Trim Size Toolbar (Floating) */}
+                <div className="sticky top-6 z-40 flex justify-center pointer-events-none">
+                    <div className="bg-slate-900/90 backdrop-blur-md text-white p-1.5 rounded-full shadow-2xl flex gap-1 pointer-events-auto border border-white/10">
+                        {(['pocket', 'a4', 'letter'] as const).map((size) => (
+                            <button
+                                key={size}
+                                onClick={() => setPageSize(size)}
+                                className={`
+                                    px-4 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wider transition-all flex items-center gap-2
+                                    ${pageSize === size ? 'bg-amber-500 text-black shadow-lg' : 'hover:bg-white/10 text-white/50'}
+                                `}
+                            >
+                                <Ratio size={12} />
+                                {size === 'pocket' ? 'Pocket (5x8)' : size === 'a4' ? 'A4 Standard' : 'US Letter'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+
+                <div className={`${containerWidthDetails[pageSize]} mx-auto min-h-full pb-32 pt-12 px-4 md:px-0 relative z-10 transition-all duration-500`}>
 
                     {/* --- 1. FRONT COVER (Distinct) --- */}
                     <div
@@ -390,6 +417,10 @@ export const VisualStudio: React.FC<VisualStudioProps> = ({ book, setBook }) => 
                                     <div>
                                         <span className="block text-white/30">Engine</span>
                                         OpenRouter Flux
+                                    </div>
+                                    <div className="col-span-2 border-t border-white/10 pt-2 flex justify-between">
+                                        <span className="block text-white/30">Trim Size</span>
+                                        <span className="text-amber-400 font-bold uppercase">{pageSize}</span>
                                     </div>
                                 </div>
                             </div>
